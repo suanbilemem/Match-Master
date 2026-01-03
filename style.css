@@ -272,7 +272,7 @@ body {
 
 .oyun-alani {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 15px;
     max-width: 900px;
     width: 100%;
@@ -281,6 +281,15 @@ body {
     padding: 30px;
     border-radius: 20px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transition: opacity 0.3s ease;
+}
+
+.oyun-alt-buton {
+    width: 100%;
+    max-width: 900px;
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
 }
 
 .kart {
@@ -402,6 +411,10 @@ body {
         grid-template-columns: repeat(4, 1fr);
         gap: 10px;
         padding: 20px;
+    }
+    
+    .oyun-alt-buton {
+        margin-top: 15px;
     }
 
     .menu-container, .lobi-container {

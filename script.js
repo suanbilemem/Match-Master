@@ -27,8 +27,10 @@ let gameState = {
     scores: { player1: 0, player2: 0 },
     playerNames: { player1: 'Sen', player2: 'Rakip' },
     matchedPairs: 0,
-    totalPairs: 10,
-    gameId: null // Online oyun için Firestore match ID
+    totalPairs: 8,
+    gameId: null, // Online oyun için Firestore match ID
+    playerNumber: null, // Online oyunda hangi oyuncu olduğumuz (1 veya 2)
+    matchUnsubscribe: null // Match dinleme listener'ı
 };
 
 // Kart Görselleri - Meyveler, Toplar, Araçlar
@@ -151,27 +153,38 @@ function startGame(mode, difficulty = null) {
     const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
     const images = cardImages[selectedCategory].slice(0, gameState.totalPairs);
     
-    // Kartları oluştur (10 çift = 20 kart)
+    // Kartları oluştur (8 çift = 16 kart)
     gameState.cards = [];
     images.forEach((img, index) => {
         gameState.cards.push({ id: index, image: img, matched: false });
         gameState.cards.push({ id: index, image: img, matched: false });
     });
     
-    // Kartları karıştır
-    gameState.cards.sort(() => Math.random() - 0.5);
+    // Online modda kartları Firestore'dan senkronize et, değilse karıştır
+    if (mode === 'online' && gameState.gameId) {
+        // Online oyunda kartlar Firestore'dan gelecek veya initializeGameInFirestore ile oluşturulacak
+        // Burada sadece bekliyoruz, kartlar startOnlineGame içinde ayarlanacak
+    } else {
+        // Gemini modunda kartları karıştır
+        gameState.cards.sort(() => Math.random() - 0.5);
+    }
     
     // Online modda oyuncu isimleri (gemini modunda varsayılan isimler)
     if (mode !== 'online') {
         gameState.playerNames.player1 = 'Sen';
         gameState.playerNames.player2 = 'Gemini';
+        // Gemini modunda hemen render et
+        renderGame();
+        showScreen('game');
+        updateScore();
+        updateTurnIndicator();
     }
-    // Online modda playerNames startOnlineGame tarafından ayarlanır
+    // Online modda playerNames ve render startOnlineGame tarafından yapılacak
     
-    renderGame();
-    showScreen('game');
-    updateScore();
-    updateTurnIndicator();
+    // Online modda Firestore'u dinle (kartlar hazır olduktan sonra)
+    if (mode === 'online' && gameState.gameId) {
+        // listenToMatchUpdates startOnlineGame içinde çağrılacak
+    }
 }
 
 // Oyun Render
@@ -200,7 +213,15 @@ function renderGame() {
 }
 
 // Kart Açma
-function openCard(index) {
+function openCard(index, isRemoteMove = false) {
+    // Online modda sıra kontrolü
+    if (gameState.mode === 'online' && !isRemoteMove) {
+        // Sırası olmayan oyuncu kart açamaz
+        if (gameState.currentPlayer !== gameState.playerNumber) {
+            return;
+        }
+    }
+    
     // Kart açma kilidi kontrolü - eğer kilitliyse hiçbir şey yapma
     if (gameState.boardLocked) {
         return;
@@ -220,16 +241,27 @@ function openCard(index) {
     cardElement.classList.add('acik');
     gameState.openCards.push({ index, card });
     
+    // Online modda Firestore'a yaz
+    if (gameState.mode === 'online' && gameState.gameId && !isRemoteMove) {
+        updateFirestoreCardState(index, 'open');
+    }
+    
     // İki kart seçildiğinde ekranı kilitle
     if (gameState.openCards.length === 2) {
         gameState.boardLocked = true; // Ekranı kilitle
         gameState.isChecking = true;
-        setTimeout(() => checkMatch(), 1000);
+        
+        // Online modda Firestore'a eşleşme kontrolü için bilgi gönder
+        if (gameState.mode === 'online' && gameState.gameId && !isRemoteMove) {
+            checkMatchOnline();
+        } else {
+            setTimeout(() => checkMatch(), 1000);
+        }
     }
 }
 
 // Eşleşme Kontrolü
-function checkMatch() {
+function checkMatch(isRemoteMove = false) {
     const [card1, card2] = gameState.openCards;
     
     if (card1.card.id === card2.card.id) {
@@ -249,6 +281,11 @@ function checkMatch() {
         
         gameState.matchedPairs++;
         
+        // Online modda Firestore'a yaz
+        if (gameState.mode === 'online' && gameState.gameId && !isRemoteMove) {
+            updateFirestoreMatchState(card1.index, card2.index, true);
+        }
+        
         // Aynı oyuncu devam eder
         updateScore();
         
@@ -257,7 +294,13 @@ function checkMatch() {
             gameState.openCards = [];
             gameState.isChecking = false;
             gameState.boardLocked = false; // Kilidi aç
-            setTimeout(() => endGame(), 1000);
+            
+            // Online modda oyun sonunu Firestore'a yaz
+            if (gameState.mode === 'online' && gameState.gameId && !isRemoteMove) {
+                endGameOnline();
+            } else {
+                setTimeout(() => endGame(), 1000);
+            }
             return;
         }
         
@@ -280,6 +323,11 @@ function checkMatch() {
             gameState.currentPlayer = gameState.currentPlayer === 1 ? 2 : 1;
             updateTurnIndicator();
             
+            // Online modda Firestore'a sıra değişikliğini yaz
+            if (gameState.mode === 'online' && gameState.gameId && !isRemoteMove) {
+                updateFirestoreTurn();
+            }
+            
             // İşlem bitti, kilidi aç
             gameState.openCards = [];
             gameState.isChecking = false;
@@ -291,6 +339,105 @@ function checkMatch() {
             }
         }, 1000);
     }
+}
+
+// Online modda eşleşme kontrolü (Firestore'a yazma ile)
+function checkMatchOnline() {
+    const [card1, card2] = gameState.openCards;
+    
+    // Firestore'a açılan kartları ve eşleşme kontrolünü yaz
+    db.collection('matches').doc(gameState.gameId).update({
+        openCards: [
+            { index: card1.index, cardId: card1.card.id },
+            { index: card2.index, cardId: card2.card.id }
+        ],
+        isChecking: true,
+        lastMoveBy: gameState.playerNumber,
+        lastMoveTime: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        // Firestore güncellemesi tamamlandıktan sonra lokal kontrolü yap
+        setTimeout(() => checkMatch(), 1000);
+    }).catch((error) => {
+        console.error('Firestore güncelleme hatası:', error);
+        // Hata olsa bile lokal kontrolü yap
+        setTimeout(() => checkMatch(), 1000);
+    });
+}
+
+// Firestore'a kart durumunu güncelle
+function updateFirestoreCardState(index, state) {
+    if (!gameState.gameId) return;
+    
+    db.collection('matches').doc(gameState.gameId).update({
+        [`cards.${index}.state`]: state,
+        lastMoveBy: gameState.playerNumber,
+        lastMoveTime: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch((error) => {
+        console.error('Kart durumu güncelleme hatası:', error);
+    });
+}
+
+// Firestore'a eşleşme durumunu güncelle
+function updateFirestoreMatchState(index1, index2, matched) {
+    if (!gameState.gameId) return;
+    
+    const updates = {
+        [`cards.${index1}.matched`]: matched,
+        [`cards.${index2}.matched`]: matched,
+        [`cards.${index1}.state`]: matched ? 'matched' : 'closed',
+        [`cards.${index2}.state`]: matched ? 'matched' : 'closed',
+        openCards: [],
+        isChecking: false,
+        lastMoveBy: gameState.playerNumber,
+        lastMoveTime: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    
+    if (matched) {
+        // Eşleşme oldu, skoru güncelle
+        const scoreField = gameState.currentPlayer === 1 ? 'scores.player1' : 'scores.player2';
+        updates[scoreField] = firebase.firestore.FieldValue.increment(1);
+        updates.matchedPairs = firebase.firestore.FieldValue.increment(1);
+    }
+    
+    db.collection('matches').doc(gameState.gameId).update(updates).catch((error) => {
+        console.error('Eşleşme durumu güncelleme hatası:', error);
+    });
+}
+
+// Firestore'a sıra değişikliğini güncelle
+function updateFirestoreTurn() {
+    if (!gameState.gameId) return;
+    
+    const nextPlayer = gameState.currentPlayer === 1 ? 2 : 1;
+    
+    db.collection('matches').doc(gameState.gameId).update({
+        currentPlayer: nextPlayer,
+        openCards: [],
+        isChecking: false,
+        lastMoveBy: gameState.playerNumber,
+        lastMoveTime: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch((error) => {
+        console.error('Sıra güncelleme hatası:', error);
+    });
+}
+
+// Online oyun sonu
+function endGameOnline() {
+    if (!gameState.gameId) return;
+    
+    const winner = gameState.scores.player1 > gameState.scores.player2 ? 1 : 
+                   gameState.scores.player1 < gameState.scores.player2 ? 2 : 0;
+    
+    db.collection('matches').doc(gameState.gameId).update({
+        status: 'finished',
+        winner: winner,
+        finishedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        setTimeout(() => endGame(), 1000);
+    }).catch((error) => {
+        console.error('Oyun sonu güncelleme hatası:', error);
+        setTimeout(() => endGame(), 1000);
+    });
 }
 
 // Gemini AI Oynama
@@ -346,6 +493,21 @@ function updateTurnIndicator() {
             ? gameState.playerNames.player1 
             : gameState.playerNames.player2;
         siraEl.textContent = `Sıra: ${playerName}`;
+        
+        // Online modda sırası olmayan oyuncu için görsel geri bildirim
+        if (gameState.mode === 'online') {
+            const isMyTurn = gameState.currentPlayer === gameState.playerNumber;
+            const oyunAlani = document.getElementById('oyun-alani');
+            if (oyunAlani) {
+                if (isMyTurn) {
+                    oyunAlani.style.pointerEvents = 'auto';
+                    oyunAlani.style.opacity = '1';
+                } else {
+                    oyunAlani.style.pointerEvents = 'none';
+                    oyunAlani.style.opacity = '0.6';
+                }
+            }
+        }
     }
 }
 
@@ -432,6 +594,16 @@ function resetGame() {
     gameState.openCards = [];
     gameState.isChecking = false;
     gameState.boardLocked = false; // Reset sırasında kilidi aç
+    
+    // Online modda listener'ı temizle
+    if (gameState.matchUnsubscribe) {
+        gameState.matchUnsubscribe();
+        gameState.matchUnsubscribe = null;
+    }
+    
+    gameState.gameId = null;
+    gameState.playerNumber = null;
+    
     const canvas = document.getElementById('konfeti-canvas');
     if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -686,7 +858,12 @@ function acceptInvite(inviteId, fromUid) {
                     status: 'active',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     currentPlayer: 1,
-                    scores: { player1: 0, player2: 0 }
+                    scores: { player1: 0, player2: 0 },
+                    cards: [],
+                    openCards: [],
+                    isChecking: false,
+                    matchedPairs: 0,
+                    totalPairs: 8
                 }).then(() => {
                     // Lobiden ayrıl (oyun başladığı için)
                     leaveLobby();
@@ -734,15 +911,222 @@ function rejectInvite(inviteId) {
 
 function startOnlineGame(opponentUid, opponentName = 'Rakip', gameId = null) {
     // Online oyun başlatma mantığı
-    gameState.playerNames.player1 = currentUser.displayName || currentUser.email;
-    gameState.playerNames.player2 = opponentName || 'Rakip';
-    
-    // GameId'yi gameState'e ekle (eğer varsa)
-    if (gameId) {
-        gameState.gameId = gameId;
+    if (!gameId) {
+        console.error('GameId bulunamadı!');
+        return;
     }
     
-    startGame('online');
+    gameState.gameId = gameId;
+    
+    // Match belgesini al ve oyuncu numarasını belirle
+    db.collection('matches').doc(gameId).get().then((doc) => {
+        if (!doc.exists) {
+            console.error('Match bulunamadı!');
+            return;
+        }
+        
+        const match = doc.data();
+        
+        // Hangi oyuncu olduğumuzu belirle
+        if (match.player1.uid === currentUser.uid) {
+            gameState.playerNumber = 1;
+            gameState.playerNames.player1 = currentUser.displayName || currentUser.email;
+            gameState.playerNames.player2 = match.player2.displayName || 'Rakip';
+        } else {
+            gameState.playerNumber = 2;
+            gameState.playerNames.player1 = match.player1.displayName || 'Rakip';
+            gameState.playerNames.player2 = currentUser.displayName || currentUser.email;
+        }
+        
+        // Oyunu başlat
+        startGame('online');
+        
+        // İlk başlatmada kartları Firestore'a kaydet (sadece player1)
+        if (!match.cards || match.cards.length === 0) {
+            initializeGameInFirestore();
+        } else {
+            // Kartlar zaten varsa, Firestore'dan senkronize et
+            if (match.cards && match.cards.length > 0) {
+                gameState.cards = match.cards.map(card => ({
+                    id: card.id,
+                    image: card.image,
+                    matched: card.matched || false
+                }));
+            }
+        }
+        
+        // Ekranı göster ve render et
+        renderGame();
+        showScreen('game');
+        updateScore();
+        updateTurnIndicator();
+        
+        // Firestore'u dinle
+        listenToMatchUpdates();
+    }).catch((error) => {
+        console.error('Match bilgisi alma hatası:', error);
+    });
+}
+
+// Firestore'da oyunu başlat (kartları kaydet)
+function initializeGameInFirestore() {
+    if (!gameState.gameId) return;
+    
+    // Sadece player1 kartları başlatır (çift başlatmayı önlemek için)
+    if (gameState.playerNumber !== 1) {
+        // Player2 ise kartları Firestore'dan bekle
+        return;
+    }
+    
+    // Kart görsellerini seç (rastgele kategori)
+    const categories = Object.keys(cardImages);
+    const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+    const images = cardImages[selectedCategory].slice(0, gameState.totalPairs);
+    
+    // Kartları oluştur
+    const cards = [];
+    images.forEach((img, index) => {
+        cards.push({ id: index, image: img, matched: false, state: 'closed' });
+        cards.push({ id: index, image: img, matched: false, state: 'closed' });
+    });
+    
+    // Kartları karıştır
+    const shuffledCards = [...cards].sort(() => Math.random() - 0.5);
+    
+    // Firestore'a kaydet
+    db.collection('matches').doc(gameState.gameId).update({
+        cards: shuffledCards.map((card, index) => ({
+            id: card.id,
+            image: card.image,
+            matched: false,
+            state: 'closed',
+            index: index
+        })),
+        totalPairs: gameState.totalPairs,
+        matchedPairs: 0
+    }).then(() => {
+        // Kartları lokal state'e de ekle
+        gameState.cards = shuffledCards;
+        // Render et (eğer ekran gösteriliyorsa)
+        if (screens.game.classList.contains('aktif')) {
+            renderGame();
+        }
+    }).catch((error) => {
+        console.error('Oyun başlatma hatası:', error);
+    });
+}
+
+
+// Match güncellemelerini dinle
+let lastProcessedMoveTime = null;
+
+function listenToMatchUpdates() {
+    if (!gameState.gameId || gameState.mode !== 'online') return;
+    
+    // Önceki listener'ı temizle
+    if (gameState.matchUnsubscribe) {
+        gameState.matchUnsubscribe();
+    }
+    
+    gameState.matchUnsubscribe = db.collection('matches').doc(gameState.gameId)
+        .onSnapshot((doc) => {
+            if (!doc.exists) return;
+            
+            const match = doc.data();
+            
+            // Sıra güncellemesi
+            if (match.currentPlayer && match.currentPlayer !== gameState.currentPlayer) {
+                gameState.currentPlayer = match.currentPlayer;
+                updateTurnIndicator();
+            }
+            
+            // Skor güncellemesi
+            if (match.scores) {
+                gameState.scores = match.scores;
+                updateScore();
+            }
+            
+            // Eşleşen çift sayısı
+            if (match.matchedPairs !== undefined) {
+                gameState.matchedPairs = match.matchedPairs;
+            }
+            
+            // Kart durumlarını senkronize et
+            if (match.cards && match.cards.length > 0) {
+                match.cards.forEach((card, index) => {
+                    if (card.matched && !gameState.cards[index].matched) {
+                        gameState.cards[index].matched = true;
+                        const cardElement = document.querySelector(`[data-index="${index}"]`);
+                        if (cardElement) {
+                            cardElement.classList.add('eslesen');
+                            cardElement.classList.remove('acik');
+                        }
+                    }
+                });
+            }
+            
+            // Sadece diğer oyuncunun hamlelerini işle
+            if (match.lastMoveBy && match.lastMoveBy !== gameState.playerNumber && match.lastMoveTime) {
+                // Aynı hamleyi tekrar işleme
+                const moveTime = match.lastMoveTime.toMillis ? match.lastMoveTime.toMillis() : match.lastMoveTime;
+                if (lastProcessedMoveTime && moveTime <= lastProcessedMoveTime) {
+                    return;
+                }
+                lastProcessedMoveTime = moveTime;
+                
+                // Açılan kartları kontrol et
+                if (match.openCards && match.openCards.length === 2 && gameState.openCards.length < 2) {
+                    const [card1, card2] = match.openCards;
+                    
+                    // İlk kartı aç
+                    if (gameState.openCards.length === 0) {
+                        const cardElement1 = document.querySelector(`[data-index="${card1.index}"]`);
+                        if (cardElement1 && !cardElement1.classList.contains('acik') && !cardElement1.classList.contains('eslesen')) {
+                            cardElement1.classList.add('acik');
+                            gameState.openCards.push({ index: card1.index, card: gameState.cards[card1.index] });
+                        }
+                    }
+                    
+                    // İkinci kartı aç
+                    setTimeout(() => {
+                        if (gameState.openCards.length === 1) {
+                            const cardElement2 = document.querySelector(`[data-index="${card2.index}"]`);
+                            if (cardElement2 && !cardElement2.classList.contains('acik') && !cardElement2.classList.contains('eslesen')) {
+                                cardElement2.classList.add('acik');
+                                gameState.openCards.push({ index: card2.index, card: gameState.cards[card2.index] });
+                                
+                                // Eşleşme kontrolü
+                                gameState.boardLocked = true;
+                                gameState.isChecking = true;
+                                setTimeout(() => {
+                                    checkMatch(true);
+                                }, 1000);
+                            }
+                        }
+                    }, 500);
+                }
+            }
+            
+            // Açık kartları kapat (eşleşme olmadıysa)
+            if (match.openCards && match.openCards.length === 0 && gameState.openCards.length > 0 && !match.isChecking) {
+                gameState.openCards.forEach(({ index }) => {
+                    const cardElement = document.querySelector(`[data-index="${index}"]`);
+                    if (cardElement && !cardElement.classList.contains('eslesen')) {
+                        cardElement.classList.remove('acik');
+                    }
+                });
+                gameState.openCards = [];
+                gameState.isChecking = false;
+                gameState.boardLocked = false;
+            }
+            
+            // Oyun sonu kontrolü
+            if (match.status === 'finished') {
+                setTimeout(() => endGame(), 1000);
+            }
+        }, (error) => {
+            console.error('Match dinleme hatası:', error);
+        });
 }
 
 // leaveLobby fonksiyonu yukarıda güncellendi
