@@ -27,7 +27,8 @@ let gameState = {
     scores: { player1: 0, player2: 0 },
     playerNames: { player1: 'Sen', player2: 'Rakip' },
     matchedPairs: 0,
-    totalPairs: 10
+    totalPairs: 10,
+    gameId: null // Online oyun için Firestore match ID
 };
 
 // Kart Görselleri - Meyveler, Toplar, Araçlar
@@ -160,14 +161,12 @@ function startGame(mode, difficulty = null) {
     // Kartları karıştır
     gameState.cards.sort(() => Math.random() - 0.5);
     
-    // Online modda oyuncu isimleri
-    if (mode === 'online') {
-        gameState.playerNames.player1 = currentUser.displayName || currentUser.email;
-        gameState.playerNames.player2 = 'Rakip';
-    } else {
+    // Online modda oyuncu isimleri (gemini modunda varsayılan isimler)
+    if (mode !== 'online') {
         gameState.playerNames.player1 = 'Sen';
         gameState.playerNames.player2 = 'Gemini';
     }
+    // Online modda playerNames startOnlineGame tarafından ayarlanır
     
     renderGame();
     showScreen('game');
@@ -443,6 +442,8 @@ function resetGame() {
 // Lobi Fonksiyonları
 let lobbyUnsubscribe = null;
 let onlineUsersUnsubscribe = null;
+let sentInvitesUnsubscribe = null;
+let matchesUnsubscribe = null;
 
 function initializeLobby() {
     // Bu fonksiyon artık sadece auth state değiştiğinde çağrılıyor
@@ -489,6 +490,14 @@ function leaveLobby() {
         onlineUsersUnsubscribe();
         onlineUsersUnsubscribe = null;
     }
+    if (sentInvitesUnsubscribe) {
+        sentInvitesUnsubscribe();
+        sentInvitesUnsubscribe = null;
+    }
+    if (matchesUnsubscribe) {
+        matchesUnsubscribe();
+        matchesUnsubscribe = null;
+    }
 }
 
 function loadLobbyUsers() {
@@ -507,17 +516,7 @@ function loadLobbyUsers() {
             .onSnapshot((snapshot) => {
                 userListEl.innerHTML = '';
                 
-                // Kendi kullanıcı bilgisini göster
-                const currentUserItem = document.createElement('div');
-                currentUserItem.className = 'kullanici-item';
-                currentUserItem.style.background = 'rgba(102, 126, 234, 0.4)';
-                currentUserItem.innerHTML = `
-                    <span class="kullanici-ad-lobi">${currentUser.displayName || currentUser.email} (Sen)</span>
-                    <span style="font-size: 0.9em; opacity: 0.8;">Çevrimiçi</span>
-                `;
-                userListEl.appendChild(currentUserItem);
-                
-                // Diğer kullanıcıları listele
+                // Sadece diğer kullanıcıları listele (kendi kullanıcısı gösterilmez)
                 snapshot.forEach((doc) => {
                     const user = doc.data();
                     const userItem = document.createElement('div');
@@ -545,8 +544,9 @@ function loadLobbyUsers() {
         userListEl.innerHTML = '<p style="text-align: center; padding: 20px; color: #ff6b6b;">Kullanıcı listesi yüklenirken hata oluştu.</p>';
     }
     
-    // Davetleri dinle
+    // Davetleri dinle (gelen ve gönderilen)
     listenForInvites();
+    listenForSentInvites();
 }
 
 function sendInvite(uid, displayName) {
@@ -605,20 +605,110 @@ function listenForInvites() {
     }
 }
 
-function acceptInvite(inviteId, fromUid) {
+function listenForSentInvites() {
+    if (!currentUser) return;
+    
     try {
-        db.collection('invites').doc(inviteId).update({
-            status: 'accepted'
-        }).then(() => {
-            // Oyunu başlat
-            startOnlineGame(fromUid);
-            // Davetleri temizle
-            db.collection('invites').doc(inviteId).delete().catch((error) => {
-                console.error('Davet silme hatası:', error);
+        // Gönderilen davetleri dinle - kabul edildiğinde oyunu başlat
+        sentInvitesUnsubscribe = db.collection('invites')
+            .where('from', '==', currentUser.uid)
+            .where('status', '==', 'accepted')
+            .onSnapshot((snapshot) => {
+                snapshot.forEach((doc) => {
+                    const invite = doc.data();
+                    
+                    // Match'i bul (oyunculara göre)
+                    db.collection('matches')
+                        .where('player1.uid', '==', currentUser.uid)
+                        .where('player2.uid', '==', invite.to)
+                        .where('status', '==', 'active')
+                        .limit(1)
+                        .get()
+                        .then((matchSnapshot) => {
+                            if (!matchSnapshot.empty) {
+                                const matchDoc = matchSnapshot.docs[0];
+                                const match = matchDoc.data();
+                                
+                                // Lobiden ayrıl (oyun başladığı için)
+                                leaveLobby();
+                                
+                                // Oyunu başlat
+                                startOnlineGame(invite.to, invite.toName, match.gameId);
+                                
+                                // Daveti temizle
+                                db.collection('invites').doc(doc.id).delete().catch((error) => {
+                                    console.error('Davet silme hatası:', error);
+                                });
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Match arama hatası:', error);
+                        });
+                });
+            }, (error) => {
+                console.error('Gönderilen davet dinleme hatası:', error);
+            });
+    } catch (error) {
+        console.error('Gönderilen davet dinleme hatası:', error);
+    }
+}
+
+function acceptInvite(inviteId, fromUid) {
+    if (!currentUser) return;
+    
+    try {
+        // Önce davet bilgisini al
+        db.collection('invites').doc(inviteId).get().then((inviteDoc) => {
+            if (!inviteDoc.exists) {
+                alert('Davet bulunamadı.');
+                return;
+            }
+            
+            const invite = inviteDoc.data();
+            
+            // Davet durumunu 'accepted' olarak güncelle
+            db.collection('invites').doc(inviteId).update({
+                status: 'accepted'
+            }).then(() => {
+                // Matches koleksiyonunda yeni bir oyun oluştur
+                const gameId = db.collection('matches').doc().id;
+                
+                db.collection('matches').doc(gameId).set({
+                    gameId: gameId,
+                    player1: {
+                        uid: invite.from,
+                        displayName: invite.fromName
+                    },
+                    player2: {
+                        uid: currentUser.uid,
+                        displayName: currentUser.displayName || currentUser.email
+                    },
+                    status: 'active',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    currentPlayer: 1,
+                    scores: { player1: 0, player2: 0 }
+                }).then(() => {
+                    // Lobiden ayrıl (oyun başladığı için)
+                    leaveLobby();
+                    
+                    // Oyunu başlat
+                    startOnlineGame(fromUid, invite.fromName, gameId);
+                    
+                    // Daveti temizle
+                    db.collection('invites').doc(inviteId).delete().catch((error) => {
+                        console.error('Davet silme hatası:', error);
+                    });
+                }).catch((error) => {
+                    console.error('Oyun oluşturma hatası:', error);
+                    alert('Oyun oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+                });
+            }).catch((error) => {
+                console.error('Davet kabul hatası:', error);
+                alert('Davet kabul edilirken bir hata oluştu. Lütfen tekrar deneyin.');
             });
         }).catch((error) => {
-            console.error('Davet kabul hatası:', error);
-            alert('Davet kabul edilirken bir hata oluştu. Lütfen tekrar deneyin.');
+            console.error('Davet bilgisi alma hatası:', error);
+            alert('Davet bilgisi alınırken bir hata oluştu.');
         });
     } catch (error) {
         console.error('Davet kabul hatası:', error);
@@ -642,10 +732,16 @@ function rejectInvite(inviteId) {
     }
 }
 
-function startOnlineGame(opponentUid) {
+function startOnlineGame(opponentUid, opponentName = 'Rakip', gameId = null) {
     // Online oyun başlatma mantığı
-    // Bu kısım Firestore real-time sync ile genişletilebilir
-    gameState.playerNames.player2 = 'Rakip'; // Rakip ismi Firestore'dan alınabilir
+    gameState.playerNames.player1 = currentUser.displayName || currentUser.email;
+    gameState.playerNames.player2 = opponentName || 'Rakip';
+    
+    // GameId'yi gameState'e ekle (eğer varsa)
+    if (gameId) {
+        gameState.gameId = gameId;
+    }
+    
     startGame('online');
 }
 
