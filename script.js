@@ -22,6 +22,7 @@ let gameState = {
     cards: [],
     openCards: [],
     isChecking: false,
+    boardLocked: false, // Kart açma kilidi
     currentPlayer: 1,
     scores: { player1: 0, player2: 0 },
     playerNames: { player1: 'Sen', player2: 'Rakip' },
@@ -58,9 +59,11 @@ auth.onAuthStateChanged((user) => {
         currentUser = user;
         showScreen('menu');
         updateUserInfo();
-        initializeLobby();
+        // initializeLobby artık kullanılmıyor, lobiye girildiğinde joinLobby çağrılacak
     } else {
         currentUser = null;
+        // Çıkış yapıldığında lobiden ayrıl
+        leaveLobby();
         showScreen('login');
     }
 });
@@ -101,6 +104,7 @@ document.getElementById('gemini-oyna-btn')?.addEventListener('click', () => {
 
 document.getElementById('lobi-btn')?.addEventListener('click', () => {
     showScreen('lobby');
+    joinLobby();
     loadLobbyUsers();
 });
 
@@ -139,6 +143,7 @@ function startGame(mode, difficulty = null) {
     gameState.scores = { player1: 0, player2: 0 };
     gameState.openCards = [];
     gameState.isChecking = false;
+    gameState.boardLocked = false; // Oyun başladığında kilidi aç
     
     // Kart görsellerini seç (rastgele kategori)
     const categories = Object.keys(cardImages);
@@ -197,9 +202,15 @@ function renderGame() {
 
 // Kart Açma
 function openCard(index) {
+    // Kart açma kilidi kontrolü - eğer kilitliyse hiçbir şey yapma
+    if (gameState.boardLocked) {
+        return;
+    }
+    
     const card = gameState.cards[index];
     const cardElement = document.querySelector(`[data-index="${index}"]`);
     
+    // Kart zaten açık, eşleşmiş, kontrol ediliyor veya 2 kart açıksa işlem yapma
     if (!cardElement || cardElement.classList.contains('acik') || 
         cardElement.classList.contains('eslesen') || 
         gameState.isChecking || 
@@ -210,7 +221,9 @@ function openCard(index) {
     cardElement.classList.add('acik');
     gameState.openCards.push({ index, card });
     
+    // İki kart seçildiğinde ekranı kilitle
     if (gameState.openCards.length === 2) {
+        gameState.boardLocked = true; // Ekranı kilitle
         gameState.isChecking = true;
         setTimeout(() => checkMatch(), 1000);
     }
@@ -242,9 +255,17 @@ function checkMatch() {
         
         // Oyun bitti mi kontrol et
         if (gameState.matchedPairs === gameState.totalPairs) {
+            gameState.openCards = [];
+            gameState.isChecking = false;
+            gameState.boardLocked = false; // Kilidi aç
             setTimeout(() => endGame(), 1000);
             return;
         }
+        
+        // İşlem bitti, kilidi aç
+        gameState.openCards = [];
+        gameState.isChecking = false;
+        gameState.boardLocked = false; // Kilidi aç - sonraki hamleye izin ver
         
         // Gemini modunda AI'nın sırası değilse, sıra yine aynı oyuncuda kalır
         if (gameState.mode === 'gemini' && gameState.currentPlayer === 2) {
@@ -260,20 +281,22 @@ function checkMatch() {
             gameState.currentPlayer = gameState.currentPlayer === 1 ? 2 : 1;
             updateTurnIndicator();
             
+            // İşlem bitti, kilidi aç
+            gameState.openCards = [];
+            gameState.isChecking = false;
+            gameState.boardLocked = false; // Kilidi aç - sonraki hamleye izin ver
+            
             // Gemini modunda ve AI'nın sırasıysa
             if (gameState.mode === 'gemini' && gameState.currentPlayer === 2) {
                 setTimeout(() => geminiPlay(), 500);
             }
         }, 1000);
     }
-    
-    gameState.openCards = [];
-    gameState.isChecking = false;
 }
 
 // Gemini AI Oynama
 function geminiPlay() {
-    if (gameState.isChecking || gameState.openCards.length > 0) return;
+    if (gameState.isChecking || gameState.openCards.length > 0 || gameState.boardLocked) return;
     
     // Zorluk seviyesine göre AI stratejisi
     const unmatchedCards = gameState.cards
@@ -409,6 +432,7 @@ function startConfetti() {
 function resetGame() {
     gameState.openCards = [];
     gameState.isChecking = false;
+    gameState.boardLocked = false; // Reset sırasında kilidi aç
     const canvas = document.getElementById('konfeti-canvas');
     if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -418,103 +442,204 @@ function resetGame() {
 
 // Lobi Fonksiyonları
 let lobbyUnsubscribe = null;
+let onlineUsersUnsubscribe = null;
 
 function initializeLobby() {
-    // Kullanıcıyı lobiye ekle
-    if (currentUser) {
-        db.collection('lobby').doc(currentUser.uid).set({
+    // Bu fonksiyon artık sadece auth state değiştiğinde çağrılıyor
+    // Lobiye girildiğinde kullanıcı eklenmesi loadLobbyUsers() içinde yapılacak
+}
+
+// Lobiye katılma - online_users koleksiyonuna ekle
+function joinLobby() {
+    if (!currentUser) return;
+    
+    try {
+        db.collection('online_users').doc(currentUser.uid).set({
             uid: currentUser.uid,
             displayName: currentUser.displayName || currentUser.email,
             email: currentUser.email,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch((error) => {
+            console.error('Lobiye katılma hatası:', error);
         });
+    } catch (error) {
+        console.error('Lobiye katılma hatası:', error);
+    }
+}
+
+// Lobiden ayrılma - online_users koleksiyonundan sil
+function leaveLobby() {
+    if (!currentUser) return;
+    
+    try {
+        db.collection('online_users').doc(currentUser.uid).delete()
+            .catch((error) => {
+                console.error('Lobiden ayrılma hatası:', error);
+            });
+    } catch (error) {
+        console.error('Lobiden ayrılma hatası:', error);
+    }
+    
+    // Listener'ları temizle
+    if (lobbyUnsubscribe) {
+        lobbyUnsubscribe();
+        lobbyUnsubscribe = null;
+    }
+    if (onlineUsersUnsubscribe) {
+        onlineUsersUnsubscribe();
+        onlineUsersUnsubscribe = null;
     }
 }
 
 function loadLobbyUsers() {
     const userListEl = document.getElementById('kullanici-listesi');
-    userListEl.innerHTML = '';
+    if (!userListEl) return;
     
-    // Diğer kullanıcıları dinle
-    lobbyUnsubscribe = db.collection('lobby')
-        .where('uid', '!=', currentUser.uid)
-        .onSnapshot((snapshot) => {
-            userListEl.innerHTML = '';
-            snapshot.forEach((doc) => {
-                const user = doc.data();
-                const userItem = document.createElement('div');
-                userItem.className = 'kullanici-item';
-                userItem.innerHTML = `
-                    <span class="kullanici-ad-lobi">${user.displayName}</span>
-                    <button class="btn-kucuk" onclick="sendInvite('${user.uid}', '${user.displayName}')">Davet Gönder</button>
+    userListEl.innerHTML = '<p style="text-align: center; padding: 20px;">Yükleniyor...</p>';
+    
+    // Önce kullanıcıyı ekle
+    joinLobby();
+    
+    // Diğer kullanıcıları canlı olarak dinle
+    try {
+        onlineUsersUnsubscribe = db.collection('online_users')
+            .where('uid', '!=', currentUser.uid)
+            .onSnapshot((snapshot) => {
+                userListEl.innerHTML = '';
+                
+                // Kendi kullanıcı bilgisini göster
+                const currentUserItem = document.createElement('div');
+                currentUserItem.className = 'kullanici-item';
+                currentUserItem.style.background = 'rgba(102, 126, 234, 0.4)';
+                currentUserItem.innerHTML = `
+                    <span class="kullanici-ad-lobi">${currentUser.displayName || currentUser.email} (Sen)</span>
+                    <span style="font-size: 0.9em; opacity: 0.8;">Çevrimiçi</span>
                 `;
-                userListEl.appendChild(userItem);
+                userListEl.appendChild(currentUserItem);
+                
+                // Diğer kullanıcıları listele
+                snapshot.forEach((doc) => {
+                    const user = doc.data();
+                    const userItem = document.createElement('div');
+                    userItem.className = 'kullanici-item';
+                    userItem.innerHTML = `
+                        <span class="kullanici-ad-lobi">${user.displayName}</span>
+                        <button class="btn-kucuk" onclick="sendInvite('${user.uid}', '${user.displayName}')">Davet Gönder</button>
+                    `;
+                    userListEl.appendChild(userItem);
+                });
+                
+                if (snapshot.empty) {
+                    const emptyMsg = document.createElement('p');
+                    emptyMsg.style.textAlign = 'center';
+                    emptyMsg.style.padding = '20px';
+                    emptyMsg.textContent = 'Lobide başka kullanıcı yok.';
+                    userListEl.appendChild(emptyMsg);
+                }
+            }, (error) => {
+                console.error('Kullanıcı listesi dinleme hatası:', error);
+                userListEl.innerHTML = '<p style="text-align: center; padding: 20px; color: #ff6b6b;">Kullanıcı listesi yüklenirken hata oluştu.</p>';
             });
-            
-            if (snapshot.empty) {
-                userListEl.innerHTML = '<p style="text-align: center; padding: 20px;">Lobide başka kullanıcı yok.</p>';
-            }
-        });
+    } catch (error) {
+        console.error('Kullanıcı listesi yükleme hatası:', error);
+        userListEl.innerHTML = '<p style="text-align: center; padding: 20px; color: #ff6b6b;">Kullanıcı listesi yüklenirken hata oluştu.</p>';
+    }
     
     // Davetleri dinle
     listenForInvites();
 }
 
 function sendInvite(uid, displayName) {
-    db.collection('invites').add({
-        from: currentUser.uid,
-        fromName: currentUser.displayName || currentUser.email,
-        to: uid,
-        toName: displayName,
-        status: 'pending',
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    try {
+        db.collection('invites').add({
+            from: currentUser.uid,
+            fromName: currentUser.displayName || currentUser.email,
+            to: uid,
+            toName: displayName,
+            status: 'pending',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch((error) => {
+            console.error('Davet gönderme hatası:', error);
+            alert('Davet gönderilirken bir hata oluştu. Lütfen tekrar deneyin.');
+        });
+    } catch (error) {
+        console.error('Davet gönderme hatası:', error);
+        alert('Davet gönderilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
 }
 
 function listenForInvites() {
-    // Gelen davetleri dinle
-    db.collection('invites')
-        .where('to', '==', currentUser.uid)
-        .where('status', '==', 'pending')
-        .onSnapshot((snapshot) => {
-            const notificationArea = document.getElementById('bildirim-alani');
-            notificationArea.innerHTML = '';
-            
-            snapshot.forEach((doc) => {
-                const invite = doc.data();
-                const notification = document.createElement('div');
-                notification.className = 'bildirim';
-                notification.innerHTML = `
-                    <div>
-                        <strong>${invite.fromName}</strong> sizi oyuna davet ediyor!
-                    </div>
-                    <div class="bildirim-buttons">
-                        <button class="btn-kucuk" onclick="acceptInvite('${doc.id}', '${invite.from}')">Kabul</button>
-                        <button class="btn-kucuk" onclick="rejectInvite('${doc.id}')">Reddet</button>
-                    </div>
-                `;
-                notificationArea.appendChild(notification);
+    if (!currentUser) return;
+    
+    try {
+        // Gelen davetleri dinle
+        db.collection('invites')
+            .where('to', '==', currentUser.uid)
+            .where('status', '==', 'pending')
+            .onSnapshot((snapshot) => {
+                const notificationArea = document.getElementById('bildirim-alani');
+                if (!notificationArea) return;
+                
+                notificationArea.innerHTML = '';
+                
+                snapshot.forEach((doc) => {
+                    const invite = doc.data();
+                    const notification = document.createElement('div');
+                    notification.className = 'bildirim';
+                    notification.innerHTML = `
+                        <div>
+                            <strong>${invite.fromName}</strong> sizi oyuna davet ediyor!
+                        </div>
+                        <div class="bildirim-buttons">
+                            <button class="btn-kucuk" onclick="acceptInvite('${doc.id}', '${invite.from}')">Kabul</button>
+                            <button class="btn-kucuk" onclick="rejectInvite('${doc.id}')">Reddet</button>
+                        </div>
+                    `;
+                    notificationArea.appendChild(notification);
+                });
+            }, (error) => {
+                console.error('Davet dinleme hatası:', error);
             });
-        });
+    } catch (error) {
+        console.error('Davet dinleme hatası:', error);
+    }
 }
 
 function acceptInvite(inviteId, fromUid) {
-    db.collection('invites').doc(inviteId).update({
-        status: 'accepted'
-    }).then(() => {
-        // Oyunu başlat
-        startOnlineGame(fromUid);
-        // Davetleri temizle
-        db.collection('invites').doc(inviteId).delete();
-    });
+    try {
+        db.collection('invites').doc(inviteId).update({
+            status: 'accepted'
+        }).then(() => {
+            // Oyunu başlat
+            startOnlineGame(fromUid);
+            // Davetleri temizle
+            db.collection('invites').doc(inviteId).delete().catch((error) => {
+                console.error('Davet silme hatası:', error);
+            });
+        }).catch((error) => {
+            console.error('Davet kabul hatası:', error);
+            alert('Davet kabul edilirken bir hata oluştu. Lütfen tekrar deneyin.');
+        });
+    } catch (error) {
+        console.error('Davet kabul hatası:', error);
+        alert('Davet kabul edilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
 }
 
 function rejectInvite(inviteId) {
-    db.collection('invites').doc(inviteId).update({
-        status: 'rejected'
-    }).then(() => {
-        db.collection('invites').doc(inviteId).delete();
-    });
+    try {
+        db.collection('invites').doc(inviteId).update({
+            status: 'rejected'
+        }).then(() => {
+            db.collection('invites').doc(inviteId).delete().catch((error) => {
+                console.error('Davet silme hatası:', error);
+            });
+        }).catch((error) => {
+            console.error('Davet reddetme hatası:', error);
+        });
+    } catch (error) {
+        console.error('Davet reddetme hatası:', error);
+    }
 }
 
 function startOnlineGame(opponentUid) {
@@ -524,18 +649,19 @@ function startOnlineGame(opponentUid) {
     startGame('online');
 }
 
-function leaveLobby() {
-    if (currentUser) {
-        db.collection('lobby').doc(currentUser.uid).delete();
-    }
-    if (lobbyUnsubscribe) {
-        lobbyUnsubscribe();
-    }
-}
+// leaveLobby fonksiyonu yukarıda güncellendi
 
-// Sayfa kapatılırken lobiden çık
+// Sayfa kapatılırken veya kullanıcı çıkış yaparken lobiden çık
 window.addEventListener('beforeunload', () => {
     leaveLobby();
+});
+
+// Sayfa görünürlüğü değiştiğinde (sekme değiştiğinde) kontrol et
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        // Sayfa gizlendiğinde lobiden çıkabilir (opsiyonel)
+        // leaveLobby();
+    }
 });
 
 // Global fonksiyonlar (HTML'den çağrılabilmesi için)
