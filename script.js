@@ -1,14 +1,12 @@
-// ⚠️ ÖNEMLİ: Firebase Yapılandırması
-// Bu projeyi çalıştırmak için Firebase Console'dan (https://console.firebase.google.com)
-// bir proje oluşturup aşağıdaki bilgileri kendi Firebase config'inizle değiştirmeniz gerekmektedir.
-// Firebase Console > Proje Ayarları > Genel > Uygulamalarınız bölümünden config bilgilerini alabilirsiniz.
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
+  authDomain: "match-master-af628.firebaseapp.com",
+  databaseURL: "https://match-master-af628-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "match-master-af628",
+  storageBucket: "match-master-af628.firebasestorage.app",
+  messagingSenderId: "508395504322",
+  appId: "1:508395504322:web:93343b6445b24a27b5715b",
+  measurementId: "G-ZRJNQGRT7B"
 };
 
 // Firebase'i başlat
