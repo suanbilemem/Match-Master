@@ -16,9 +16,11 @@ const db = firebase.firestore();
 
 // Oyun State
 let currentUser = null;
+let selectedTheme = 'fruits'; // Varsayılan tema: 'fruits', 'sprunki', 'vehicles', 'balls'
 let gameState = {
     mode: null, // 'gemini' veya 'online'
     difficulty: null, // 'kolay', 'orta', 'zor'
+    theme: 'fruits', // Oyun teması
     cards: [],
     openCards: [],
     isChecking: false,
@@ -33,7 +35,7 @@ let gameState = {
     matchUnsubscribe: null // Match dinleme listener'ı
 };
 
-// Kart Görselleri - Meyveler, Toplar, Araçlar
+// Kart Görselleri - Meyveler, Toplar, Araçlar, Sprunki
 const cardImages = {
     fruits: [
         '🍎', '🍌', '🍇', '🍊', '🍓', '🍑', '🍒', '🥝', '🍉', '🥭'
@@ -43,6 +45,18 @@ const cardImages = {
     ],
     vehicles: [
         '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐'
+    ],
+    sprunki: [
+        'https://via.placeholder.com/150/FF6B9D/FFFFFF?text=Wenda',
+        'https://via.placeholder.com/150/808080/FFFFFF?text=Gray',
+        'https://via.placeholder.com/150/FFB6C1/FFFFFF?text=Pinki',
+        'https://via.placeholder.com/150/FFD700/000000?text=Yellow',
+        'https://via.placeholder.com/150/00CED1/FFFFFF?text=Cyan',
+        'https://via.placeholder.com/150/FF6347/FFFFFF?text=Red',
+        'https://via.placeholder.com/150/9370DB/FFFFFF?text=Purple',
+        'https://via.placeholder.com/150/32CD32/FFFFFF?text=Green',
+        'https://via.placeholder.com/150/FF1493/FFFFFF?text=Rose',
+        'https://via.placeholder.com/150/1E90FF/FFFFFF?text=Blue'
     ]
 };
 
@@ -51,6 +65,7 @@ const screens = {
     login: document.getElementById('login-ekrani'),
     menu: document.getElementById('ana-menu'),
     difficulty: document.getElementById('zorluk-ekrani'),
+    theme: document.getElementById('tema-ekrani'),
     lobby: document.getElementById('lobi-ekrani'),
     game: document.getElementById('oyun-ekrani'),
     gameEnd: document.getElementById('oyun-sonu-ekrani')
@@ -105,6 +120,10 @@ document.getElementById('gemini-oyna-btn')?.addEventListener('click', () => {
     showScreen('difficulty');
 });
 
+document.getElementById('tema-sec-btn')?.addEventListener('click', () => {
+    showScreen('theme');
+});
+
 document.getElementById('lobi-btn')?.addEventListener('click', () => {
     showScreen('lobby');
     joinLobby();
@@ -131,11 +150,25 @@ document.getElementById('ana-ekran-btn-4')?.addEventListener('click', () => {
     resetGame();
     showScreen('menu');
 });
+document.getElementById('ana-ekran-btn-5')?.addEventListener('click', () => showScreen('menu'));
+
+// Tema Seçim Butonları
+document.getElementById('tema-klasik-btn')?.addEventListener('click', () => selectTheme('fruits'));
+document.getElementById('tema-sprunki-btn')?.addEventListener('click', () => selectTheme('sprunki'));
+document.getElementById('tema-araclar-btn')?.addEventListener('click', () => selectTheme('vehicles'));
+document.getElementById('tema-toplar-btn')?.addEventListener('click', () => selectTheme('balls'));
 
 // Zorluk Seviyesi Butonları
 document.getElementById('kolay-btn')?.addEventListener('click', () => startGame('gemini', 'kolay'));
 document.getElementById('orta-btn')?.addEventListener('click', () => startGame('gemini', 'orta'));
 document.getElementById('zor-btn')?.addEventListener('click', () => startGame('gemini', 'zor'));
+
+// Tema Seçim Fonksiyonu
+function selectTheme(theme) {
+    selectedTheme = theme;
+    gameState.theme = theme;
+    showScreen('menu');
+}
 
 // Oyun Başlatma
 function startGame(mode, difficulty = null) {
@@ -148,10 +181,13 @@ function startGame(mode, difficulty = null) {
     gameState.isChecking = false;
     gameState.boardLocked = false; // Oyun başladığında kilidi aç
     
-    // Kart görsellerini seç (rastgele kategori)
-    const categories = Object.keys(cardImages);
-    const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
-    const images = cardImages[selectedCategory].slice(0, gameState.totalPairs);
+    // Tema belirleme: Online modda Firestore'dan gelecek, değilse seçilen temayı kullan
+    if (mode !== 'online') {
+        gameState.theme = selectedTheme;
+    }
+    
+    // Kart görsellerini seç (tema bazlı)
+    const images = cardImages[gameState.theme].slice(0, gameState.totalPairs);
     
     // Kartları oluştur (8 çift = 16 kart)
     gameState.cards = [];
@@ -171,7 +207,7 @@ function startGame(mode, difficulty = null) {
     
     // Online modda oyuncu isimleri (gemini modunda varsayılan isimler)
     if (mode !== 'online') {
-        gameState.playerNames.player1 = 'Sen';
+        gameState.playerNames.player1 = currentUser?.displayName || currentUser?.email || 'Sen';
         gameState.playerNames.player2 = 'Gemini';
         // Gemini modunda hemen render et
         renderGame();
@@ -202,9 +238,15 @@ function renderGame() {
             cardElement.classList.add('eslesen');
         }
         
-        // Emoji'yi direkt text olarak ekle
-        cardElement.setAttribute('data-emoji', card.image);
-        cardElement.innerHTML = `<span class="card-emoji">${card.image}</span>`;
+        // Tema bazlı görsel gösterimi
+        if (gameState.theme === 'sprunki') {
+            // Sprunki için img tag kullan
+            cardElement.innerHTML = `<img src="${card.image}" alt="Sprunki" class="card-image" />`;
+        } else {
+            // Diğer temalar için emoji
+            cardElement.setAttribute('data-emoji', card.image);
+            cardElement.innerHTML = `<span class="card-emoji">${card.image}</span>`;
+        }
         
         cardElement.addEventListener('click', () => openCard(index));
         
@@ -502,10 +544,20 @@ function updateTurnIndicator() {
                 if (isMyTurn) {
                     oyunAlani.style.pointerEvents = 'auto';
                     oyunAlani.style.opacity = '1';
+                    oyunAlani.classList.remove('disabled');
                 } else {
                     oyunAlani.style.pointerEvents = 'none';
                     oyunAlani.style.opacity = '0.6';
+                    oyunAlani.classList.add('disabled');
                 }
+            }
+        } else {
+            // Gemini modunda her zaman aktif
+            const oyunAlani = document.getElementById('oyun-alani');
+            if (oyunAlani) {
+                oyunAlani.style.pointerEvents = 'auto';
+                oyunAlani.style.opacity = '1';
+                oyunAlani.classList.remove('disabled');
             }
         }
     }
@@ -729,6 +781,7 @@ function sendInvite(uid, displayName) {
             to: uid,
             toName: displayName,
             status: 'pending',
+            theme: selectedTheme, // Host'un seçtiği temayı kaydet
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         }).catch((error) => {
             console.error('Davet gönderme hatası:', error);
@@ -838,6 +891,9 @@ function acceptInvite(inviteId, fromUid) {
             
             const invite = inviteDoc.data();
             
+            // Host'un seçtiği temayı al (davetten)
+            const hostTheme = invite.theme || selectedTheme;
+            
             // Davet durumunu 'accepted' olarak güncelle
             db.collection('invites').doc(inviteId).update({
                 status: 'accepted'
@@ -863,7 +919,8 @@ function acceptInvite(inviteId, fromUid) {
                     openCards: [],
                     isChecking: false,
                     matchedPairs: 0,
-                    totalPairs: 8
+                    totalPairs: 8,
+                    theme: hostTheme // Host'un seçtiği temayı kaydet
                 }).then(() => {
                     // Lobiden ayrıl (oyun başladığı için)
                     leaveLobby();
@@ -927,6 +984,13 @@ function startOnlineGame(opponentUid, opponentName = 'Rakip', gameId = null) {
         
         const match = doc.data();
         
+        // Tema bilgisini Firestore'dan al (Host'un seçtiği tema)
+        if (match.theme) {
+            gameState.theme = match.theme;
+        } else {
+            gameState.theme = selectedTheme; // Fallback
+        }
+        
         // Hangi oyuncu olduğumuzu belirle
         if (match.player1.uid === currentUser.uid) {
             gameState.playerNumber = 1;
@@ -978,10 +1042,8 @@ function initializeGameInFirestore() {
         return;
     }
     
-    // Kart görsellerini seç (rastgele kategori)
-    const categories = Object.keys(cardImages);
-    const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
-    const images = cardImages[selectedCategory].slice(0, gameState.totalPairs);
+    // Kart görsellerini seç (tema bazlı)
+    const images = cardImages[gameState.theme].slice(0, gameState.totalPairs);
     
     // Kartları oluştur
     const cards = [];
@@ -1003,7 +1065,8 @@ function initializeGameInFirestore() {
             index: index
         })),
         totalPairs: gameState.totalPairs,
-        matchedPairs: 0
+        matchedPairs: 0,
+        theme: gameState.theme // Tema bilgisini de kaydet
     }).then(() => {
         // Kartları lokal state'e de ekle
         gameState.cards = shuffledCards;
@@ -1051,6 +1114,20 @@ function listenToMatchUpdates() {
                 gameState.matchedPairs = match.matchedPairs;
             }
             
+            // Tema güncellemesi (eğer değiştiyse)
+            if (match.theme && match.theme !== gameState.theme) {
+                gameState.theme = match.theme;
+                // Kartları yeniden yükle
+                if (match.cards && match.cards.length > 0) {
+                    gameState.cards = match.cards.map(card => ({
+                        id: card.id,
+                        image: card.image,
+                        matched: card.matched || false
+                    }));
+                    renderGame();
+                }
+            }
+            
             // Kart durumlarını senkronize et
             if (match.cards && match.cards.length > 0) {
                 match.cards.forEach((card, index) => {
@@ -1074,7 +1151,7 @@ function listenToMatchUpdates() {
                 }
                 lastProcessedMoveTime = moveTime;
                 
-                // Açılan kartları kontrol et
+                // Açılan kartları kontrol et - canlı senkronizasyon
                 if (match.openCards && match.openCards.length === 2 && gameState.openCards.length < 2) {
                     const [card1, card2] = match.openCards;
                     
@@ -1082,8 +1159,7 @@ function listenToMatchUpdates() {
                     if (gameState.openCards.length === 0) {
                         const cardElement1 = document.querySelector(`[data-index="${card1.index}"]`);
                         if (cardElement1 && !cardElement1.classList.contains('acik') && !cardElement1.classList.contains('eslesen')) {
-                            cardElement1.classList.add('acik');
-                            gameState.openCards.push({ index: card1.index, card: gameState.cards[card1.index] });
+                            openCard(card1.index, true);
                         }
                     }
                     
@@ -1092,15 +1168,7 @@ function listenToMatchUpdates() {
                         if (gameState.openCards.length === 1) {
                             const cardElement2 = document.querySelector(`[data-index="${card2.index}"]`);
                             if (cardElement2 && !cardElement2.classList.contains('acik') && !cardElement2.classList.contains('eslesen')) {
-                                cardElement2.classList.add('acik');
-                                gameState.openCards.push({ index: card2.index, card: gameState.cards[card2.index] });
-                                
-                                // Eşleşme kontrolü
-                                gameState.boardLocked = true;
-                                gameState.isChecking = true;
-                                setTimeout(() => {
-                                    checkMatch(true);
-                                }, 1000);
+                                openCard(card2.index, true);
                             }
                         }
                     }, 500);

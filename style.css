@@ -322,11 +322,21 @@ body {
     display: block;
 }
 
+.card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border-radius: 9px;
+}
+
 .kart.acik::before {
     opacity: 0;
 }
 
-.kart.acik .card-emoji {
+.kart.acik .card-emoji,
+.kart.acik .card-image {
     opacity: 1;
 }
 
@@ -355,8 +365,15 @@ body {
     display: none;
 }
 
-.kart.eslesen .card-emoji {
+.kart.eslesen .card-emoji,
+.kart.eslesen .card-image {
     opacity: 1;
+}
+
+/* Sırası olmayan oyuncu için kart tıklamasını engelle */
+.oyun-alani.disabled {
+    pointer-events: none;
+    opacity: 0.6;
 }
 
 /* Oyun Sonu Ekranı */
