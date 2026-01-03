@@ -7,19 +7,16 @@
 body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', sans-serif;
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow-x: hidden;
 }
 
-/* Ekran Yönetimi */
 .ekran {
     display: none;
     width: 100%;
-    min-height: 100vh;
     padding: 20px;
 }
 
@@ -30,441 +27,80 @@ body {
     justify-content: center;
 }
 
-/* Login Ekranı */
-.login-container {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    text-align: center;
-    max-width: 400px;
-    width: 100%;
-}
-
-.login-container h1 {
-    font-size: 2.5em;
-    margin-bottom: 20px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.login-container p {
-    margin-bottom: 30px;
-    font-size: 1.1em;
-    opacity: 0.9;
-}
-
-/* Menu Container */
-.menu-container {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    text-align: center;
-    max-width: 500px;
-    width: 100%;
-}
-
-.menu-container h1, .menu-container h2 {
-    font-size: 2.5em;
-    margin-bottom: 30px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.menu-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-/* Butonlar */
-.btn {
-    padding: 15px 30px;
-    font-size: 1.1em;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-}
-
-.btn-secondary {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
-.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateY(-2px);
-}
-
-/* Kullanıcı Bilgisi */
-.kullanici-bilgisi {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    font-size: 1.1em;
-}
-
-/* Lobi Ekranı */
-.lobi-container {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    max-width: 600px;
-    width: 100%;
-    min-height: 500px;
-}
-
-.lobi-container h2 {
-    text-align: center;
-    margin-bottom: 30px;
-    font-size: 2em;
-}
-
-.kullanici-listesi {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 30px;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.kullanici-item {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 15px 20px;
-    border-radius: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.3s ease;
-}
-
-.kullanici-item:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateX(5px);
-}
-
-.kullanici-ad-lobi {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-.btn-kucuk {
-    padding: 8px 20px;
-    font-size: 0.9em;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    transition: all 0.3s ease;
-}
-
-.btn-kucuk:hover {
-    transform: scale(1.05);
-}
-
-.btn-kucuk:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.bildirim-alani {
-    margin-bottom: 20px;
-    min-height: 60px;
-}
-
-.bildirim {
-    background: rgba(255, 215, 0, 0.3);
-    border: 2px solid gold;
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-.bildirim-buttons {
-    display: flex;
+/* Oyun Alanı Düzenlemesi */
+.oyun-alani {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 sütun */
     gap: 10px;
+    width: 95%;
+    max-width: 500px;
+    aspect-ratio: 1 / 1;
+    margin: 20px auto;
 }
 
-/* Oyun Ekranı */
+.card {
+    aspect-ratio: 1 / 1;
+    cursor: pointer;
+    perspective: 1000px;
+}
+
+.card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}
+
+.card.flipped .card-inner {
+    transform: rotateY(180deg);
+}
+
+.card-front, .card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2em;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-back {
+    transform: rotateY(180deg);
+    background: white;
+    color: #333;
+}
+
 .oyun-ust-bilgi {
     width: 100%;
-    max-width: 900px;
-    margin-bottom: 20px;
+    max-width: 500px;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.skor-alani {
-    display: flex;
-    gap: 20px;
-    flex: 1;
-}
-
-.skor-kart {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 15px 30px;
-    border-radius: 15px;
-    text-align: center;
-    min-width: 150px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.oyuncu-ad {
-    display: block;
-    font-size: 1.1em;
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
-.skor {
-    display: block;
-    font-size: 2em;
-    font-weight: bold;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
 .sira-gosterge {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.2);
     padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
     border-radius: 10px;
-    font-weight: bold;
-    font-size: 1.2em;
-}
-
-.oyun-alani {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-    max-width: 900px;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 30px;
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    transition: opacity 0.3s ease;
-}
-
-.oyun-alt-buton {
-    width: 100%;
-    max-width: 900px;
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-}
-
-.kart {
-    aspect-ratio: 1;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 12px;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    transition: transform 0.3s, box-shadow 0.3s;
-    overflow: hidden;
-}
-
-.kart::before {
-    content: '?';
-    position: absolute;
-    color: white;
     font-weight: bold;
-    font-size: 3em;
-    transition: opacity 0.3s;
+    transition: 0.3s;
 }
 
-.card-emoji {
-    font-size: 3em;
-    opacity: 0;
-    transition: opacity 0.3s;
-    display: block;
-}
-
-.card-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    transition: opacity 0.3s;
-    border-radius: 9px;
-}
-
-.kart.acik::before {
-    opacity: 0;
-}
-
-.kart.acik .card-emoji,
-.kart.acik .card-image {
-    opacity: 1;
-}
-
-.kart:hover:not(.acik):not(.eslesen) {
-    transform: scale(1.05);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-}
-
-.kart.eslesen {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-    cursor: default;
-    border-color: rgba(255, 255, 255, 0.5);
-    animation: matchPulse 0.5s ease;
-}
-
-@keyframes matchPulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.1);
-    }
-}
-
-.kart.eslesen::before {
-    display: none;
-}
-
-.kart.eslesen .card-emoji,
-.kart.eslesen .card-image {
-    opacity: 1;
-}
-
-/* Sırası olmayan oyuncu için kart tıklamasını engelle */
-.oyun-alani.disabled {
-    pointer-events: none;
-    opacity: 0.6;
-}
-
-/* Oyun Sonu Ekranı */
-.oyun-sonu-container {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    padding: 60px 40px;
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    text-align: center;
-    z-index: 10;
-    position: relative;
-    max-width: 500px;
-    width: 100%;
-}
-
-.oyun-sonu-mesaj {
-    font-size: 3em;
-    font-weight: bold;
-    margin-bottom: 30px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-    animation: bounceIn 0.6s ease;
-}
-
-@keyframes bounceIn {
-    0% {
-        transform: scale(0);
-        opacity: 0;
-    }
-    50% {
-        transform: scale(1.1);
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-#konfeti-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 5;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .oyun-alani {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        padding: 20px;
-    }
-    
-    .oyun-alt-buton {
-        margin-top: 15px;
-    }
-
-    .menu-container, .lobi-container {
-        padding: 20px;
-    }
-
-    .oyun-ust-bilgi {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .skor-alani {
-        justify-content: space-around;
-    }
-
-    .skor-kart {
-        min-width: 120px;
-        padding: 10px 20px;
-    }
-}
-
-@media (max-width: 480px) {
-    .oyun-alani {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-        padding: 15px;
-    }
-
-    .kart::before {
-        font-size: 2em;
-    }
-
-    .oyun-sonu-mesaj {
-        font-size: 2em;
-    }
-}
+.btn-primary { background: #4caf50; color: white; }
+.btn-secondary { background: #555; color: white; }
