@@ -31,14 +31,38 @@ body {
     justify-content: center;
     font-size: 40px;
     color: transparent; /* Sayılar başlangıçta gizli */
-    transition: transform 0.3s;
+    transition: transform 0.3s, background-color 0.3s;
+    position: relative;
+    border: 2px solid #c0392b;
 }
 
-.kart:hover {
+.kart::before {
+    content: '?';
+    position: absolute;
+    color: white;
+    font-weight: bold;
+    font-size: 50px;
+    transition: opacity 0.3s;
+}
+
+.kart.acik::before {
+    opacity: 0;
+}
+
+.kart:hover:not(.acik):not(.eslesen) {
     transform: scale(1.05);
+    background-color: #c0392b;
 }
 
-.acik {
+.kart.acik {
     background-color: #ecf0f1;
     color: #2c3e50; /* Kart açılınca sayı görünür */
+    border-color: #bdc3c7;
+}
+
+.kart.eslesen {
+    background-color: #2ecc71;
+    color: white;
+    border-color: #27ae60;
+    cursor: default;
 }
