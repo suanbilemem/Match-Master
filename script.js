@@ -16,18 +16,18 @@ const db = firebase.firestore();
 let currentUser = null;
 let currentLobbyId = null;
 let gameState = {
-    mode: 'local', // 'local' veya 'online'
+    mode: 'local',
     cards: [],
     openCards: [],
     boardLocked: false,
-    currentPlayerId: null, // Sıradaki oyuncunun ID'si
-    scores: {},
-    playerNames: {}
+    currentPlayerId: null,
+    scores: { player1: 0, player2: 0 },
+    playerNames: { player1: 'Sen', player2: 'Rakip' }
 };
 
 const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🥝', '🍒', '🍑', '🍋'];
 
-// --- AUTH VE GİRİŞ ---
+// --- AUTH ---
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
@@ -39,16 +39,14 @@ auth.onAuthStateChanged(user => {
     }
 });
 
-document.getElementById('google-login-btn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-
-// --- OYUN TAHTASI OLUŞTURMA ---
+// --- OYUN TAHTASI ---
 function createBoard(symbols) {
     const oyunAlani = document.getElementById('oyun-alani');
     oyunAlani.innerHTML = '';
     
     symbols.forEach((symbol, index) => {
         const card = document.createElement('div');
-        card.className = 'card';
+        card.className = 'card'; // Başlangıçta kapalı
         card.dataset.index = index;
         card.innerHTML = `
             <div class="card-inner">
@@ -58,27 +56,27 @@ function createBoard(symbols) {
         card.onclick = () => handleCardClick(index, symbol);
         oyunAlani.appendChild(card);
     });
+    
+    gameState.openCards = [];
+    gameState.boardLocked = false;
 }
 
-// --- KART TIKLAMA (SENKRONİZE) ---
+// --- TIKLAMA MANTIĞI ---
 async function handleCardClick(index, symbol) {
-    // Sıra kontrolü: Eğer online oyunsa ve sıra bende değilse tıklatmaz
-    if (gameState.mode === 'online' && gameState.currentPlayerId !== currentUser.uid) return;
     if (gameState.boardLocked) return;
+    if (gameState.mode === 'online' && gameState.currentPlayerId !== currentUser.uid) return;
 
     const cardElements = document.querySelectorAll('.card');
     const card = cardElements[index];
-
     if (card.classList.contains('flipped')) return;
 
-    // Kartı çevir ve Firebase'e bildir
     card.classList.add('flipped');
     gameState.openCards.push({index, symbol});
 
     if (gameState.mode === 'online') {
         await db.collection("lobbies").doc(currentLobbyId).update({
-            lastAction: { type: 'flip', index, userId: currentUser.uid },
-            openCards: gameState.openCards
+            lastFlipped: { index, symbol, userId: currentUser.uid },
+            openCardsCount: gameState.openCards.length
         });
     }
 
@@ -94,30 +92,21 @@ async function checkMatch() {
     const cardElements = document.querySelectorAll('.card');
 
     if (c1.symbol === c2.symbol) {
-        // Puan ekle ve Firebase'e yaz
         if (gameState.mode === 'online') {
             const newScores = {...gameState.scores};
             newScores[currentUser.uid] = (newScores[currentUser.uid] || 0) + 1;
-            await db.collection("lobbies").doc(currentLobbyId).update({
-                scores: newScores,
-                openCards: []
-            });
+            await db.collection("lobbies").doc(currentLobbyId).update({ scores: newScores });
+        } else {
+            gameState.scores.player1++; // Basit local skor
         }
     } else {
-        // Kartları kapat ve sırayı değiştir
         cardElements[c1.index].classList.remove('flipped');
         cardElements[c2.index].classList.remove('flipped');
         
         if (gameState.mode === 'online') {
-            // Sırayı diğer oyuncuya devret
             const lobbyDoc = await db.collection("lobbies").doc(currentLobbyId).get();
-            const players = lobbyDoc.data().players;
-            const nextPlayer = players.find(id => id !== currentUser.uid);
-            
-            await db.collection("lobbies").doc(currentLobbyId).update({
-                currentTurn: nextPlayer,
-                openCards: []
-            });
+            const nextPlayer = lobbyDoc.data().players.find(id => id !== currentUser.uid);
+            await db.collection("lobbies").doc(currentLobbyId).update({ currentTurn: nextPlayer });
         }
     }
     
@@ -125,56 +114,64 @@ async function checkMatch() {
     gameState.boardLocked = false;
 }
 
-// --- LOBİ SİSTEMİ (ONLINE OYUN) ---
-document.getElementById('lobi-btn').onclick = async () => {
-    gameState.mode = 'online';
-    const gameSymbols = [...meyveler, ...meyveler].sort(() => Math.random() - 0.5);
-    
-    // Basit bir lobi oluşturma (Test için sabit 'oda1')
-    currentLobbyId = "oda1"; 
-    const lobbyRef = db.collection("lobbies").doc(currentLobbyId);
-
-    await lobbyRef.set({
-        symbols: gameSymbols,
-        players: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-        playerNames: { [currentUser.uid]: currentUser.displayName },
-        currentTurn: currentUser.uid,
-        scores: { [currentUser.uid]: 0 },
-        openCards: []
-    }, { merge: true });
-
-    listenLobby(currentLobbyId);
-    
-    document.getElementById('ana-menu').classList.remove('aktif');
-    document.getElementById('oyun-ekrani').classList.add('aktif');
-};
-
-// --- CANLI DİNLEME (onSnapshot) ---
-function listenLobby(lobbyId) {
-    db.collection("lobbies").doc(lobbyId).onSnapshot((doc) => {
-        const data = doc.data();
-        if (!data) return;
-
-        // Tahtayı ilk kez kur
-        if (document.querySelectorAll('.card').length === 0) {
-            createBoard(data.symbols);
-        }
-
-        // Skorları ve Sırayı Güncelle
-        gameState.scores = data.scores;
-        gameState.currentPlayerId = data.currentTurn;
-        
-        // UI Güncelleme (Skor tabelası)
-        // Burada senin HTML'indeki ID'lere göre güncelleme yapmalısın
-        console.log("Sıra kimde:", data.currentTurn);
-    });
-}
-
+// --- MODLAR ---
 document.getElementById('gemini-oyna-btn').onclick = () => {
     gameState.mode = 'local';
+    document.querySelector('.score-box:nth-child(1) h3').innerText = currentUser.displayName;
+    document.querySelector('.score-box:nth-child(2) h3').innerText = 'Gemini';
     document.getElementById('ana-menu').classList.remove('aktif');
     document.getElementById('oyun-ekrani').classList.add('aktif');
     createBoard([...meyveler, ...meyveler].sort(() => Math.random() - 0.5));
 };
 
+document.getElementById('lobi-btn').onclick = async () => {
+    gameState.mode = 'online';
+    currentLobbyId = "oda1"; 
+    const gameSymbols = [...meyveler, ...meyveler].sort(() => Math.random() - 0.5);
+    
+    const lobbyRef = db.collection("lobbies").doc(currentLobbyId);
+    await lobbyRef.set({
+        symbols: gameSymbols,
+        players: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+        playerNames: { [currentUser.uid]: currentUser.displayName },
+        currentTurn: currentUser.uid,
+        scores: { [currentUser.uid]: 0 }
+    }, { merge: true });
+
+    listenLobby(currentLobbyId);
+    document.getElementById('ana-menu').classList.remove('aktif');
+    document.getElementById('oyun-ekrani').classList.add('aktif');
+};
+
+// --- SENKRONİZASYON ---
+function listenLobby(lobbyId) {
+    db.collection("lobbies").doc(lobbyId).onSnapshot((doc) => {
+        const data = doc.data();
+        if (!data) return;
+
+        if (document.querySelectorAll('.card').length === 0) createBoard(data.symbols);
+
+        // İsim ve Skor Güncelleme
+        const ids = Object.keys(data.playerNames);
+        if (ids[0]) {
+            document.querySelector('.score-box:nth-child(1) h3').innerText = data.playerNames[ids[0]];
+            document.getElementById('score-1').innerText = data.scores[ids[0]] || 0;
+        }
+        if (ids[1]) {
+            document.querySelector('.score-box:nth-child(2) h3').innerText = data.playerNames[ids[1]];
+            document.getElementById('score-2').innerText = data.scores[ids[1]] || 0;
+        }
+
+        gameState.currentPlayerId = data.currentTurn;
+        document.getElementById('sira-bilgisi').innerText = `Sıra: ${data.playerNames[data.currentTurn] || '...'}`;
+
+        // Rakip kart açtıysa senin ekranında da açılsın
+        if (data.lastFlipped && data.lastFlipped.userId !== currentUser.uid) {
+            const card = document.querySelectorAll('.card')[data.lastFlipped.index];
+            if (card) card.classList.add('flipped');
+        }
+    });
+}
+
+document.getElementById('google-login-btn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
 document.getElementById('ana-ekran-btn-3').onclick = () => location.reload();
