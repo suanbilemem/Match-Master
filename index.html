@@ -5,22 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Match Master Online</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
+
+    <div id="login-ekrani" class="ekran aktif">
+        <div class="login-container">
+            <h1>Match Master</h1>
+            <p>Eğlenceye Hazır Mısın?</p>
+            <button id="google-login-btn" class="btn btn-primary">Google ile Giriş Yap</button>
+        </div>
+    </div>
+
     <div id="lobi-ekrani" class="ekran">
         <div class="menu-container">
-            <h2 id="kullanici-bilgisi" style="margin-bottom: 5px;">Merhaba!</h2>
-            <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 15px;">Tema Seç ve Rakip Bul</p>
+            <h2 id="kullanici-bilgisi">Merhaba!</h2>
+            <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 15px;">Bir tema seç ve rakibini davet et</p>
             
             <div class="tema-secici">
                 <button onclick="temaAyarla('meyveler')" id="btn-meyve" class="btn-tema aktif">🍎 Meyve</button>
                 <button onclick="temaAyarla('minecraft')" id="btn-mine" class="btn-tema">⛏️ Mine</button>
                 <button onclick="temaAyarla('sprunki')" id="btn-sprun" class="btn-tema">🎵 Sprun</button>
             </div>
-    
+
             <div class="liste-alani">
                 <h3>Çevrimiçi Oyuncular</h3>
                 <div id="kullanici-listesi"></div>
@@ -29,27 +39,26 @@
         </div>
     </div>
 
-    <div id="lobi-ekrani" class="ekran">
-        <div class="menu-container">
-            <h2 id="kullanici-bilgisi">Hoş geldin!</h2>
-            <div class="lobi-baslik">Aktif Oyuncular</div>
-            <div id="kullanici-listesi" class="liste-alani"></div>
-            <button id="oyundan-cik-btn" class="btn btn-secondary">Oturumu Kapat</button>
+    <div id="oyun-ekrani" class="ekran">
+        <div class="skor-alani">
+            <div id="oyuncu1-kutu" class="skor-kart">
+                <div id="oyuncu1-ad">Oyuncu 1</div>
+                <div id="oyuncu1-skor" class="skor-sayi">0</div>
+            </div>
+            <div id="oyuncu2-kutu" class="skor-kart">
+                <div id="oyuncu2-ad">Oyuncu 2</div>
+                <div id="oyuncu2-skor" class="skor-sayi">0</div>
+            </div>
         </div>
+        
+        <div id="sira-gosterge" style="margin-bottom: 10px; font-weight: bold; color: #fdbb2d;">Sıra Bekleniyor...</div>
+        
+        <div id="oyun-alani" class="oyun-alani">
+            </div>
+        
+        <button id="ana-ekran-btn" class="btn btn-secondary" onclick="location.reload()">Lobiye Dön</button>
     </div>
 
-    <div id="oyun-ekrani" class="ekran">
-        <div class="oyun-ust-bilgi">
-            <div class="skor-alani">
-                <div class="skor-kart"><span id="oyuncu1-ad">Sen</span>: <span id="oyuncu1-skor">0</span></div>
-                <div class="skor-kart"><span id="oyuncu2-ad">Rakip</span>: <span id="oyuncu2-skor">0</span></div>
-            </div>
-            <div id="sira-gosterge">Sıra Bekleniyor...</div>
-        </div>
-        <div id="oyun-alani" class="oyun-alani"></div>
-        <button id="ana-ekran-btn" class="btn btn-secondary">Lobiye Dön</button>
-    </div>
     <script src="script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </body>
 </html>
