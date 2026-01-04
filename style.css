@@ -1,4 +1,3 @@
-/* Arka Plan (Görselindeki Gradyan) */
 body {
     margin: 0;
     padding: 0;
@@ -11,9 +10,8 @@ body {
     color: white;
 }
 
-/* Ana Panel (Görselindeki Koyu Kutusu) */
 .panel {
-    background: #2b1b17; /* Görselindeki koyu kahve */
+    background: #2b1b17;
     padding: 30px;
     border-radius: 30px;
     width: 360px;
@@ -23,12 +21,8 @@ body {
     min-height: 420px;
 }
 
-h1 { font-size: 22px; margin-bottom: 5px; }
-.subtitle { font-size: 14px; color: #bbb; margin-bottom: 25px; }
-
-/* Dropdown Tasarımı */
 .dropbtn {
-    background-color: #f39c12; /* Turuncu buton */
+    background-color: #f39c12;
     color: white;
     padding: 12px;
     font-size: 16px;
@@ -37,6 +31,7 @@ h1 { font-size: 22px; margin-bottom: 5px; }
     cursor: pointer;
     width: 100%;
     font-weight: bold;
+    margin-top: 10px;
 }
 
 .dropdown-content {
@@ -56,45 +51,50 @@ h1 { font-size: 22px; margin-bottom: 5px; }
     border-bottom: 1px solid #4b3630;
 }
 
-.dropdown-content button:hover { background: #4b3630; }
 .show { display: flex; }
 
-/* Oyuncu Listesi (Sade Liste) */
 .online-box {
     background: #3d2b26;
     border-radius: 15px;
     padding: 15px;
     margin-top: 20px;
-    max-height: 200px;
-    overflow-y: auto;
 }
 
 .player-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
+    padding: 8px 0;
     border-bottom: 1px solid #4b3630;
 }
 
 .play-btn {
-    background: white;
-    color: black;
+    background: #555;
+    color: white;
     border: none;
-    padding: 4px 12px;
+    padding: 5px 12px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 13px;
 }
 
-/* Sabit Alt Bar */
+.exit-btn {
+    background: #4b3630;
+    color: #ccc;
+    border: none;
+    padding: 12px;
+    width: 100%;
+    border-radius: 10px;
+    margin-top: 20px;
+    cursor: pointer;
+}
+
 .fixed-footer {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    background: #1a110f;
     padding: 15px 0;
+    background: #1a110f;
     border-bottom-left-radius: 30px;
     border-bottom-right-radius: 30px;
 }
@@ -103,18 +103,7 @@ h1 { font-size: 22px; margin-bottom: 5px; }
     background: none;
     border: 1px solid #888;
     color: white;
-    padding: 6px 20px;
+    padding: 5px 20px;
     border-radius: 20px;
-    cursor: pointer;
-}
-
-.exit-btn {
-    background: #4b3630;
-    color: white;
-    border: none;
-    padding: 12px;
-    width: 100%;
-    border-radius: 10px;
-    margin-top: 20px;
     cursor: pointer;
 }
