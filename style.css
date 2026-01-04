@@ -16,3 +16,26 @@ body { background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); color: wh
 .kart.eslesen { background: #38ef7d; }
 .skor-alani { display: flex; justify-content: space-between; width: 100%; max-width: 400px; gap: 10px; }
 .skor-kart { background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; flex: 1; text-align: center; }
+.bitis-mesaji {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    z-index: 1000;
+    border: 3px solid #fdbb2d;
+    animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.bitis-emoji { font-size: 5rem; display: block; margin: 20px 0; }
+.bitis-metin { font-size: 2rem; font-weight: bold; margin-bottom: 20px; }
+
+@keyframes bounceIn {
+    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.05); }
+    70% { transform: translate(-50%, -50%) scale(0.9); }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}

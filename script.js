@@ -1,3 +1,4 @@
+// --- FIREBASE YAPILANDIRMASI (BURASI KRİTİK) ---
 const firebaseConfig = {
     apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
     authDomain: "match-master-af628.firebaseapp.com",
@@ -8,13 +9,18 @@ const firebaseConfig = {
     appId: "1:508395504322:web:93343b6445b24a27b5715b"
 };
 
+// Firebase'i başlat
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-let currentUser = null, currentMatchId = null, matchUnsubscribe = null;
+// --- DEĞİŞKENLER ---
+let currentUser = null;
+let currentMatchId = null;
+let matchUnsubscribe = null;
 const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑'];
 
+// --- GİRİŞ VE EKRAN YÖNETİMİ ---
 function ekranDegistir(id) {
     document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
     document.getElementById(id).classList.add('aktif');
@@ -25,7 +31,6 @@ auth.onAuthStateChanged(user => {
         currentUser = user;
         document.getElementById('kullanici-bilgisi').innerText = `Selam, ${user.displayName}`;
         ekranDegistir('lobi-ekrani');
-        // Koleksiyon adını onlineUsers olarak sabitledik
         db.collection("onlineUsers").doc(user.uid).set({ 
             displayName: user.displayName, 
             status: "lobi", 
@@ -33,9 +38,12 @@ auth.onAuthStateChanged(user => {
         });
         lobiDinle();
         davetleriDinle();
-    } else { ekranDegistir('login-ekrani'); }
+    } else { 
+        ekranDegistir('login-ekrani'); 
+    }
 });
 
+// --- LOBİ VE DAVET SİSTEMİ ---
 function lobiDinle() {
     db.collection("onlineUsers").where("status", "==", "lobi").onSnapshot(snap => {
         const liste = document.getElementById('kullanici-listesi');
@@ -51,7 +59,6 @@ function lobiDinle() {
     });
 }
 
-// DAVET VE MAÇ OLUŞTURMA (Firebase Yapına Uygun)
 async function davetEt(rakipId, rakipAd) {
     const matchId = `match_${Date.now()}`;
     await db.collection("matches").doc(matchId).set({
@@ -60,7 +67,7 @@ async function davetEt(rakipId, rakipAd) {
         player1: { uid: currentUser.uid, displayName: currentUser.displayName },
         player2: { uid: rakipId, displayName: rakipAd },
         scores: { player1: 0, player2: 0 },
-        currentPlayer: 1, // 1: Player1, 2: Player2
+        currentPlayer: 1,
         status: "pending",
         openedCards: [],
         matchedCards: []
@@ -82,7 +89,7 @@ function davetleriDinle() {
     });
 }
 
-// OYUN SENKRONİZASYONU
+// --- OYUN SENKRONİZASYONU ---
 function maçaKatil(matchId) {
     currentMatchId = matchId;
     db.collection("onlineUsers").doc(currentUser.uid).update({ status: "oyunda" });
@@ -96,7 +103,6 @@ function maçaKatil(matchId) {
         const oyunAlani = document.getElementById('oyun-alani');
         if (oyunAlani.children.length === 0) createBoard(data.symbols);
 
-        // Kartları senkronize et
         const kartlar = oyunAlani.getElementsByClassName('kart');
         const openedIndices = (data.openedCards || []).map(c => c.index);
         const matchedIndices = data.matchedCards || [];
@@ -105,20 +111,25 @@ function maçaKatil(matchId) {
             if (openedIndices.includes(i) || matchedIndices.includes(i)) {
                 kartlar[i].classList.add('acik');
                 if (matchedIndices.includes(i)) kartlar[i].classList.add('eslesen');
-            } else { kartlar[i].classList.remove('acik'); }
+            } else { 
+                kartlar[i].classList.remove('acik'); 
+            }
         }
 
-        // Sıra ve Skor Paneli
         const isPlayer1 = data.player1.uid === currentUser.uid;
         const siraBende = (isPlayer1 && data.currentPlayer === 1) || (!isPlayer1 && data.currentPlayer === 2);
         
-        document.getElementById('oyuncu1-ad').innerText = "Sen";
         document.getElementById('oyuncu1-skor').innerText = isPlayer1 ? data.scores.player1 : data.scores.player2;
-        
         document.getElementById('oyuncu2-ad').innerText = isPlayer1 ? data.player2.displayName : data.player1.displayName;
         document.getElementById('oyuncu2-skor').innerText = isPlayer1 ? data.scores.player2 : data.scores.player1;
-        
         document.getElementById('sira-gosterge').innerText = siraBende ? "Sıra: SENDE" : "Sıra: RAKİPTE";
+
+        if (data.matchedCards && data.matchedCards.length === 16) {
+            const skorun = isPlayer1 ? data.scores.player1 : data.scores.player2;
+            const rakipSkor = isPlayer1 ? data.scores.player2 : data.scores.player1;
+            let sonuc = (skorun > rakipSkor) ? "yendin" : (skorun < rakipSkor ? "yenildin" : "berabere");
+            if (!document.querySelector('.bitis-mesaji')) oyunBitisiniGoster(sonuc);
+        }
     });
 }
 
@@ -137,11 +148,10 @@ function createBoard(symbols) {
 async function handleCardClick(index, symbol) {
     const docRef = db.collection("matches").doc(currentMatchId);
     const data = (await docRef.get()).data();
-    
     const isPlayer1 = data.player1.uid === currentUser.uid;
     const siraBende = (isPlayer1 && data.currentPlayer === 1) || (!isPlayer1 && data.currentPlayer === 2);
 
-    if (!siraBende || (data.openedCards || []).length >= 2) return;
+    if (!siraBende || (data.openedCards || []).length >= 2 || data.matchedCards.includes(index)) return;
 
     const newOpened = [...(data.openedCards || []), { index, symbol }];
     await docRef.update({ openedCards: newOpened });
@@ -164,6 +174,23 @@ async function handleCardClick(index, symbol) {
             }, 1000);
         }
     }
+}
+
+// --- EFEKT VE BİTİŞ ---
+function oyunBitisiniGoster(sonuc) {
+    const bitisDiv = document.createElement('div');
+    bitisDiv.className = 'bitis-mesaji';
+    let emoji = ""; let mesaj = "";
+    if (sonuc === "yendin") {
+        emoji = "🏆"; mesaj = "TEBRİKLER, YENDİNİZ!";
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    } else if (sonuc === "yenildin") {
+        emoji = "😢"; mesaj = "YENİLDİNİZ...";
+    } else {
+        emoji = "😊"; mesaj = "BERABERE KALDINIZ";
+    }
+    bitisDiv.innerHTML = `<span class="bitis-emoji">${emoji}</span><div class="bitis-metin">${mesaj}</div><button onclick="location.reload()" class="btn btn-primary">Lobiye Dön</button>`;
+    document.body.appendChild(bitisDiv);
 }
 
 document.getElementById('google-login-btn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
