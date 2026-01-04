@@ -7,6 +7,7 @@ const firebaseConfig = {
     appId: "1:508395504322:web:93343b6445b24a27b5715b"
 };
 
+// Firebase Başlatma
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
@@ -15,7 +16,7 @@ const provider = new firebase.auth.GoogleAuthProvider();
 let currentUserName = "";
 let myDocId = "";
 
-// --- 🔑 OTURUM YÖNETİMİ ---
+// --- 🔑 GİRİŞ VE OTURUM KONTROLÜ ---
 
 auth.onAuthStateChanged((user) => {
     const loginBtn = document.getElementById("login-btn");
@@ -24,22 +25,19 @@ auth.onAuthStateChanged((user) => {
     const subText = document.getElementById("sub-text");
 
     if (user) {
-        // Giriş Yapılmışsa
         currentUserName = user.displayName;
         myDocId = user.uid; //
         welcomeText.innerText = `Merhaba, ${currentUserName.toUpperCase()}`;
         subText.innerText = "Bir tema seç ve rakibini davet et";
         
-        loginBtn.style.display = "none";
-        themeSection.style.display = "block";
-        listenForInvites(); 
+        if(loginBtn) loginBtn.style.display = "none";
+        if(themeSection) themeSection.style.display = "block";
+        listenForInvites(); // Giriş yapıldığı an davetleri dinlemeye başla
     } else {
-        // Giriş Yapılmamışsa
         welcomeText.innerText = "Match Master";
         subText.innerText = "Devam etmek için giriş yapın";
-        
-        loginBtn.style.display = "block"; // Giriş butonunu göster
-        themeSection.style.display = "none"; // Temaları gizle
+        if(loginBtn) loginBtn.style.display = "block";
+        if(themeSection) themeSection.style.display = "none";
     }
 });
 
@@ -47,7 +45,7 @@ async function loginWithGoogle() {
     try {
         await auth.signInWithPopup(provider);
     } catch (e) {
-        alert("Giriş penceresi engellendi. Lütfen adres çubuğundaki engel işaretine tıklayıp izin verin."); //
+        alert("Giriş penceresi engellendi. Lütfen izin verin!");
     }
 }
 
@@ -59,7 +57,7 @@ async function logout() {
     } catch (e) { console.error(e); }
 }
 
-// --- 📋 LOBİ VE DAVETİYE ---
+// --- 📋 LOBİ İŞLEMLERİ ---
 
 function toggleDropdown() {
     document.getElementById("theme-menu").classList.toggle("show");
@@ -69,6 +67,7 @@ async function enterLobby(selectedTheme) {
     document.getElementById("home-screen").style.display = "none";
     document.getElementById("lobby-screen").style.display = "block";
     
+    // Kendini online listesine ekle
     await db.collection("online_users").doc(myDocId).set({
         displayName: currentUserName,
         theme: selectedTheme,
@@ -94,22 +93,47 @@ function loadPlayers() {
     });
 }
 
+// --- 📩 DAVETİYE VE OYUNA GEÇİŞ SİSTEMİ ---
+
 async function sendInvite(targetId) {
+    // Karşı tarafla ortak bir oda ID'si oluşturuyoruz
+    const roomId = `${myDocId}_${targetId}`;
+    
     await db.collection("invites").doc(targetId).set({
         fromName: currentUserName,
+        fromId: myDocId,
+        roomId: roomId,
         status: "pending"
     });
-    alert("Davet iletildi!");
+    
+    alert("Davet iletildi! Rakibin kabul etmesi bekleniyor...");
+
+    // Rakibin kabul edip etmediğini dinle
+    db.collection("invites").doc(targetId).onSnapshot((doc) => {
+        if (doc.exists && doc.data().status === "accepted") {
+            // Rakip kabul ettiyse seni de oyuna gönder
+            window.location.href = `game.html?room=${roomId}`;
+        }
+    });
 }
 
 function listenForInvites() {
     db.collection("invites").doc(myDocId).onSnapshot((doc) => {
         if (doc.exists && doc.data().status === "pending") {
             const data = doc.data();
+            
             if (confirm(`${data.fromName} seni oyuna davet ediyor!`)) {
-                alert("Oyun Başlıyor!");
+                // 1. Daveti kabul edildi olarak güncelle
+                db.collection("invites").doc(myDocId).update({
+                    status: "accepted"
+                });
+                
+                // 2. Kendini direkt oyun odasına gönder
+                window.location.href = `game.html?room=${data.roomId}`;
+            } else {
+                // Reddedilirse daveti sil
+                db.collection("invites").doc(myDocId).delete();
             }
-            db.collection("invites").doc(myDocId).delete();
         }
     });
 }
