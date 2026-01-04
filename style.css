@@ -1,117 +1,25 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
-    authDomain: "match-master-af628.firebaseapp.com",
-    databaseURL: "https://match-master-af628-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "match-master-af628",
-    storageBucket: "match-master-af628.firebasestorage.app",
-    messagingSenderId: "508395504322",
-    appId: "1:508395504322:web:93343b6445b24a27b5715b"
-};
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); color: white; font-family: sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+.ekran { display: none; width: 100%; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+.ekran.aktif { display: flex; }
 
-let currentUser = null, currentLobbyId = null, lobbyUnsubscribe = null;
-let openCards = [];
-const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑'];
+.login-container, .menu-container { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); padding: 40px; border-radius: 20px; text-align: center; width: 100%; max-width: 400px; }
 
-function ekranDegistir(id) {
-    document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
-    document.getElementById(id).classList.add('aktif');
-}
+.liste-alani { background: rgba(255, 255, 255, 0.1); border-radius: 12px; margin: 20px 0; max-height: 250px; overflow-y: auto; padding: 10px; }
 
-auth.onAuthStateChanged(user => {
-    if (user) {
-        currentUser = user;
-        document.getElementById('kullanici-bilgisi').innerText = `Selam, ${user.displayName}`;
-        ekranDegistir('lobi-ekrani');
-        db.collection("onlineUsers").doc(user.uid).set({ name: user.displayName, status: "lobi", lastSeen: Date.now() });
-        lobiDinle();
-        davetleriDinle();
-    } else {
-        ekranDegistir('login-ekrani');
-    }
-});
+.kullanici-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.1); padding: 10px; margin-bottom: 8px; border-radius: 8px; }
 
-function lobiDinle() {
-    db.collection("onlineUsers").where("status", "==", "lobi").onSnapshot(snap => {
-        const liste = document.getElementById('kullanici-listesi');
-        liste.innerHTML = "";
-        snap.forEach(doc => {
-            if (doc.id !== currentUser.uid) {
-                const div = document.createElement('div');
-                div.className = "kullanici-item";
-                div.innerHTML = `<span>${doc.data().name}</span><button onclick="davetEt('${doc.id}')" class="btn-davet">Davet</button>`;
-                liste.appendChild(div);
-            }
-        });
-    });
-}
+.btn { padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
+.btn-primary { background: white; color: #b21f1f; }
+.btn-secondary { background: rgba(255,255,255,0.2); color: white; margin-top: 15px; }
+.btn-davet { background: #38ef7d; color: #111; padding: 5px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: bold; width: auto; }
 
-async function davetEt(rakipId) {
-    const odaId = `oda_${currentUser.uid}_${rakipId}`;
-    await db.collection("lobbies").doc(odaId).set({
-        symbols: [...meyveler, ...meyveler].sort(() => Math.random() - 0.5),
-        oyuncular: [currentUser.uid, rakipId],
-        playerNames: { [currentUser.uid]: currentUser.displayName },
-        scores: { [currentUser.uid]: 0, [rakipId]: 0 },
-        currentTurn: currentUser.uid,
-        status: "bekliyor",
-        davetEden: currentUser.displayName,
-        davetEdilenId: rakipId
-    });
-    odaKatil(odaId);
-}
+.oyun-alani { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
+.kart { width: 75px; height: 75px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; font-size: 2rem; }
+.kart::after { content: '?'; position: absolute; background: #333; width: 100%; height: 100%; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; transition: 0.3s; }
+.kart.acik::after, .kart.eslesen::after { opacity: 0; pointer-events: none; }
+.kart.eslesen { background: #38ef7d; }
 
-function davetleriDinle() {
-    db.collection("lobbies").where("davetEdilenId", "==", currentUser.uid).where("status", "==", "bekliyor").onSnapshot(snap => {
-        snap.forEach(doc => {
-            if (confirm(`${doc.data().davetEden} seni maça davet ediyor! Katılmak ister misin?`)) {
-                db.collection("lobbies").doc(doc.id).update({ 
-                    status: "aktif",
-                    [`playerNames.${currentUser.uid}`]: currentUser.displayName 
-                });
-                odaKatil(doc.id);
-            }
-        });
-    });
-}
-
-function odaKatil(odaId) {
-    currentLobbyId = odaId;
-    db.collection("onlineUsers").doc(currentUser.uid).update({ status: "oyunda" });
-    ekranDegistir('oyun-ekrani');
-    
-    if (lobbyUnsubscribe) lobbyUnsubscribe();
-    lobbyUnsubscribe = db.collection("lobbies").doc(odaId).onSnapshot(doc => {
-        const data = doc.data();
-        if (!data) return;
-        if (document.getElementById('oyun-alani').children.length === 0) createBoard(data.symbols);
-        
-        const rakipId = data.oyuncular.find(id => id !== currentUser.uid);
-        document.getElementById('oyuncu1-skor').innerText = data.scores[currentUser.uid];
-        document.getElementById('oyuncu2-ad').innerText = data.playerNames[rakipId] || "Rakip";
-        document.getElementById('oyuncu2-skor').innerText = data.scores[rakipId];
-        document.getElementById('sira-gosterge').innerText = data.currentTurn === currentUser.uid ? "Sıra: Sende" : "Sıra: Rakipte";
-    });
-}
-
-function createBoard(symbols) {
-    const oyunAlani = document.getElementById('oyun-alani');
-    oyunAlani.innerHTML = '';
-    symbols.forEach((s, i) => {
-        const card = document.createElement('div');
-        card.className = 'kart';
-        card.innerHTML = s;
-        card.onclick = () => {
-            // Online hamle mantığı buraya gelecek
-            card.classList.toggle('acik');
-        };
-        oyunAlani.appendChild(card);
-    });
-}
-
-document.getElementById('google-login-btn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-document.getElementById('oyundan-cik-btn').onclick = () => auth.signOut();
-document.getElementById('ana-ekran-btn').onclick = () => location.reload();
+.skor-alani { display: flex; justify-content: space-between; width: 100%; max-width: 400px; gap: 10px; }
+.skor-kart { background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; flex: 1; text-align: center; }

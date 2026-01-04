@@ -1,28 +1,141 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+const firebaseConfig = {
+    apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
+    authDomain: "match-master-af628.firebaseapp.com",
+    databaseURL: "https://match-master-af628-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "match-master-af628",
+    storageBucket: "match-master-af628.firebasestorage.app",
+    messagingSenderId: "508395504322",
+    appId: "1:508395504322:web:93343b6445b24a27b5715b"
+};
 
-.ekran { display: none; width: 100%; min-height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-.ekran.aktif { display: flex; }
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
 
-.login-container, .menu-container { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); padding: 40px; border-radius: 20px; text-align: center; width: 100%; max-width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+let currentUser = null, currentLobbyId = null, lobbyUnsubscribe = null;
+let openCards = [];
+const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑'];
 
-.liste-alani { background: rgba(255, 255, 255, 0.1); border-radius: 12px; margin: 20px 0; max-height: 300px; overflow-y: auto; padding: 10px; }
+function ekranDegistir(id) {
+    document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
+    document.getElementById(id).classList.add('aktif');
+}
 
-.kullanici-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.15); padding: 12px; margin-bottom: 8px; border-radius: 8px; transition: 0.3s; }
-.kullanici-item:hover { background: rgba(255, 255, 255, 0.25); }
+auth.onAuthStateChanged(user => {
+    if (user) {
+        currentUser = user;
+        document.getElementById('kullanici-bilgisi').innerText = `Selam, ${user.displayName}`;
+        ekranDegistir('lobi-ekrani');
+        db.collection("onlineUsers").doc(user.uid).set({ name: user.displayName, status: "lobi", lastSeen: Date.now() });
+        lobiDinle();
+        davetleriDinle();
+    } else {
+        ekranDegistir('login-ekrani');
+    }
+});
 
-.btn { padding: 12px 25px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.3s; width: 100%; }
-.btn-primary { background: #fff; color: #b21f1f; }
-.btn-secondary { background: rgba(255, 255, 255, 0.2); color: white; margin-top: 15px; }
-.btn-davet { background: #38ef7d; color: #111; padding: 5px 15px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
+function lobiDinle() {
+    db.collection("onlineUsers").where("status", "==", "lobi").onSnapshot(snap => {
+        const liste = document.getElementById('kullanici-listesi');
+        liste.innerHTML = "";
+        snap.forEach(doc => {
+            if (doc.id !== currentUser.uid) {
+                const div = document.createElement('div');
+                div.className = "kullanici-item";
+                div.innerHTML = `<span>${doc.data().name}</span><button onclick="davetEt('${doc.id}')" class="btn-davet">Davet</button>`;
+                liste.appendChild(div);
+            }
+        });
+    });
+}
 
-.oyun-alani { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
-.kart { width: 70px; height: 70px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; font-size: 2rem; }
-.kart::after { content: '?'; position: absolute; background: #222; width: 100%; height: 100%; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; transition: 0.3s; }
-.kart.acik::after, .kart.eslesen::after { opacity: 0; pointer-events: none; }
-.kart.eslesen { background: #38ef7d; box-shadow: 0 0 15px #38ef7d; }
+async function davetEt(rakipId) {
+    const odaId = `oda_${currentUser.uid}_${rakipId}`;
+    await db.collection("lobbies").doc(odaId).set({
+        symbols: [...meyveler, ...meyveler].sort(() => Math.random() - 0.5),
+        oyuncular: [currentUser.uid, rakipId],
+        playerNames: { [currentUser.uid]: currentUser.displayName },
+        scores: { [currentUser.uid]: 0, [rakipId]: 0 },
+        currentTurn: currentUser.uid,
+        status: "bekliyor",
+        davetEden: currentUser.displayName,
+        davetEdilenId: rakipId
+    });
+    odaKatil(odaId);
+}
 
-.oyun-ust-bilgi { width: 100%; max-width: 500px; margin-bottom: 20px; }
-.skor-alani { display: flex; justify-content: space-between; gap: 10px; }
-.skor-kart { background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; flex: 1; text-align: center; }
-#sira-gosterge { text-align: center; margin-top: 10px; font-weight: bold; font-size: 1.2rem; color: #fdbb2d; }
+function davetleriDinle() {
+    db.collection("lobbies").where("davetEdilenId", "==", currentUser.uid).where("status", "==", "bekliyor").onSnapshot(snap => {
+        snap.forEach(doc => {
+            if (confirm(`${doc.data().davetEden} seni maça davet ediyor! Katılmak ister misin?`)) {
+                db.collection("lobbies").doc(doc.id).update({ 
+                    status: "aktif",
+                    [`playerNames.${currentUser.uid}`]: currentUser.displayName 
+                });
+                odaKatil(doc.id);
+            }
+        });
+    });
+}
+
+function odaKatil(odaId) {
+    currentLobbyId = odaId;
+    db.collection("onlineUsers").doc(currentUser.uid).update({ status: "oyunda" });
+    ekranDegistir('oyun-ekrani');
+    
+    if (lobbyUnsubscribe) lobbyUnsubscribe();
+    lobbyUnsubscribe = db.collection("lobbies").doc(odaId).onSnapshot(doc => {
+        const data = doc.data();
+        if (!data) return;
+        if (document.getElementById('oyun-alani').children.length === 0) createBoard(data.symbols);
+        
+        const rakipId = data.oyuncular.find(id => id !== currentUser.uid);
+        document.getElementById('oyuncu1-skor').innerText = data.scores[currentUser.uid] || 0;
+        document.getElementById('oyuncu2-ad').innerText = data.playerNames[rakipId] || "Rakip";
+        document.getElementById('oyuncu2-skor').innerText = data.scores[rakipId] || 0;
+        document.getElementById('sira-gosterge').innerText = data.currentTurn === currentUser.uid ? "Sıra: Sende" : "Sıra: Rakipte";
+    });
+}
+
+function createBoard(symbols) {
+    const oyunAlani = document.getElementById('oyun-alani');
+    oyunAlani.innerHTML = '';
+    symbols.forEach((s, i) => {
+        const card = document.createElement('div');
+        card.className = 'kart';
+        card.innerHTML = s;
+        card.onclick = () => handleCardClick(i, s, card);
+        oyunAlani.appendChild(card);
+    });
+}
+
+async function handleCardClick(index, symbol, cardElement) {
+    const doc = await db.collection("lobbies").doc(currentLobbyId).get();
+    const data = doc.data();
+    if (data.currentTurn !== currentUser.uid || cardElement.classList.contains('acik')) return;
+
+    cardElement.classList.add('acik');
+    openCards.push({ index, symbol, cardElement });
+
+    if (openCards.length === 2) {
+        const [c1, c2] = openCards;
+        if (c1.symbol === c2.symbol) {
+            const newScore = (data.scores[currentUser.uid] || 0) + 1;
+            await db.collection("lobbies").doc(currentLobbyId).update({ [`scores.${currentUser.uid}`]: newScore });
+            c1.cardElement.classList.add('eslesen');
+            c2.cardElement.classList.add('eslesen');
+        } else {
+            const rakipId = data.oyuncular.find(id => id !== currentUser.uid);
+            setTimeout(() => {
+                c1.cardElement.classList.remove('acik');
+                c2.cardElement.classList.remove('acik');
+                db.collection("lobbies").doc(currentLobbyId).update({ currentTurn: rakipId });
+            }, 1000);
+        }
+        openCards = [];
+    }
+}
+
+document.getElementById('google-login-btn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+document.getElementById('oyundan-cik-btn').onclick = () => auth.signOut();
+document.getElementById('ana-ekran-btn').onclick = () => location.reload();
