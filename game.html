@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Master - Oyun Odası</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #2b1b17 0%, #4b1a2e 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .game-panel {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        .room-id {
+            color: #f39c12;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        .status {
+            margin-top: 20px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-panel">
+        <h1>Oyun Odasına Bağlandınız! 🚀</h1>
+        <p>Oda ID: <span id="room-display" class="room-id">Yükleniyor...</span></p>
+        <p class="status">Rakip bekleniyor ve kartlar hazırlanıyor...</p>
+    </div>
+
+    <script>
+        // URL'deki ?room=... kısmından Oda ID'sini çekiyoruz
+        const params = new URLSearchParams(window.location.search);
+        const roomId = params.get('room');
+        
+        if (roomId) {
+            document.getElementById('room-display').innerText = roomId;
+        } else {
+            document.getElementById('room-display').innerText = "Hata: Oda bulunamadı!";
+        }
+    </script>
+</body>
+</html>
