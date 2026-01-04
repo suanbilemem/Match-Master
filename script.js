@@ -1,11 +1,12 @@
 // 1. FIREBASE YAPILANDIRMASI (Daha önce çalışan anahtarların)
 const firebaseConfig = {
-    apiKey: "AIzaSyB...", // Buradaki anahtar projenin kimliği
-    authDomain: "match-master-online.firebaseapp.com",
-    projectId: "match-master-online",
-    storageBucket: "match-master-online.appspot.com",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef"
+    apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
+    authDomain: "match-master-af628.firebaseapp.com",
+    databaseURL: "https://match-master-af628-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "match-master-af628",
+    storageBucket: "match-master-af628.firebasestorage.app",
+    messagingSenderId: "508395504322",
+    appId: "1:508395504322:web:93343b6445b24a27b5715b"
 };
 
 if (!firebase.apps.length) {
