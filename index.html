@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Match Master - Hafıza Oyunu</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Firebase SDK -->
+    
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Login Ekranı -->
     <div id="login-ekrani" class="ekran aktif">
         <div class="login-container">
             <h1>Match Master</h1>
@@ -20,7 +19,6 @@
         </div>
     </div>
 
-    <!-- Ana Menü -->
     <div id="ana-menu" class="ekran">
         <div class="menu-container">
             <h1>Match Master</h1>
@@ -34,7 +32,6 @@
         </div>
     </div>
 
-    <!-- Zorluk Seviyesi Seçimi -->
     <div id="zorluk-ekrani" class="ekran">
         <div class="menu-container">
             <h2>Zorluk Seviyesi Seçin</h2>
@@ -47,7 +44,6 @@
         </div>
     </div>
 
-    <!-- Lobi Ekranı -->
     <div id="lobi-ekrani" class="ekran">
         <div class="lobi-container">
             <h2>Lobi</h2>
@@ -57,7 +53,6 @@
         </div>
     </div>
 
-    <!-- Oyun Ekranı -->
     <div id="oyun-ekrani" class="ekran">
         <div class="oyun-ust-bilgi">
             <div class="skor-alani">
@@ -70,15 +65,16 @@
                     <span id="oyuncu2-skor" class="skor">0</span>
                 </div>
             </div>
-            <div id="sira-gosterge" class="sira-gosterge">Sıra: Sen</div>
+            <div id="sira-gosterge" class="sira-gosterge">Sıra: Bekleniyor...</div>
         </div>
+        
         <div id="oyun-alani" class="oyun-alani"></div>
+        
         <div class="oyun-alt-buton">
             <button id="ana-ekran-btn-3" class="btn btn-secondary">Ana Ekran</button>
         </div>
     </div>
 
-    <!-- Oyun Sonu Ekranı -->
     <div id="oyun-sonu-ekrani" class="ekran">
         <div class="oyun-sonu-container">
             <div id="oyun-sonu-mesaj" class="oyun-sonu-mesaj"></div>
