@@ -3,85 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match Master - Hafıza Oyunu</title>
+    <title>Match Master Online</title>
     <link rel="stylesheet" href="style.css">
-    
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <div id="lobi-ekrani" class="ekran">
-        <div class="menu-container">
-            <h2>Lobi (Online Oyuncular)</h2>
-            <div id="kullanici-listesi" style="margin: 20px 0; max-height: 300px; overflow-y: auto;">
-                </div>
-            <button id="ana-ekran-btn-2" class="btn btn-secondary">Ana Ekran</button>
-        </div>
-    </div>
-
-    <div id="ana-menu" class="ekran">
-        <div class="menu-container">
+    <div id="login-ekrani" class="ekran aktif">
+        <div class="login-container">
             <h1>Match Master</h1>
-            <div id="kullanici-bilgisi" class="kullanici-bilgisi"></div>
-            <div class="menu-buttons">
-                <button id="gemini-oyna-btn" class="btn btn-primary">Gemini ile Oyna</button>
-                <button id="tema-sec-btn" class="btn btn-primary">Tema Seç</button>
-                <button id="lobi-btn" class="btn btn-primary">Lobi (Online)</button>
-                <button id="oyundan-cik-btn" class="btn btn-secondary">Oyundan Çık</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="zorluk-ekrani" class="ekran">
-        <div class="menu-container">
-            <h2>Zorluk Seviyesi Seçin</h2>
-            <div class="menu-buttons">
-                <button id="kolay-btn" class="btn btn-primary">Kolay</button>
-                <button id="orta-btn" class="btn btn-primary">Orta</button>
-                <button id="zor-btn" class="btn btn-primary">Zor</button>
-                <button id="ana-ekran-btn-1" class="btn btn-secondary">Ana Ekran</button>
-            </div>
+            <p>Yarışmaya başlamak için giriş yapın</p>
+            <button id="google-login-btn" class="btn btn-primary">Google ile Giriş Yap</button>
         </div>
     </div>
 
     <div id="lobi-ekrani" class="ekran">
-        <div class="lobi-container">
-            <h2>Lobi</h2>
-            <div id="kullanici-listesi" class="kullanici-listesi"></div>
-            <div id="bildirim-alani" class="bildirim-alani"></div>
-            <button id="ana-ekran-btn-2" class="btn btn-secondary">Ana Ekran</button>
+        <div class="menu-container">
+            <h2 id="kullanici-bilgisi">Hoş geldin!</h2>
+            <div class="lobi-baslik">Aktif Oyuncular</div>
+            <div id="kullanici-listesi" class="liste-alani">
+                </div>
+            <button id="oyundan-cik-btn" class="btn btn-secondary">Oturumu Kapat</button>
         </div>
     </div>
 
     <div id="oyun-ekrani" class="ekran">
         <div class="oyun-ust-bilgi">
             <div class="skor-alani">
-                <div class="skor-kart">
-                    <span id="oyuncu1-ad" class="oyuncu-ad">Sen</span>
-                    <span id="oyuncu1-skor" class="skor">0</span>
-                </div>
-                <div class="skor-kart">
-                    <span id="oyuncu2-ad" class="oyuncu-ad">Rakip</span>
-                    <span id="oyuncu2-skor" class="skor">0</span>
-                </div>
+                <div class="skor-kart"><span id="oyuncu1-ad">Sen</span>: <span id="oyuncu1-skor">0</span></div>
+                <div class="skor-kart"><span id="oyuncu2-ad">Rakip</span>: <span id="oyuncu2-skor">0</span></div>
             </div>
-            <div id="sira-gosterge" class="sira-gosterge">Sıra: Bekleniyor...</div>
+            <div id="sira-gosterge">Sıra Bekleniyor...</div>
         </div>
-        
         <div id="oyun-alani" class="oyun-alani"></div>
-        
-        <div class="oyun-alt-buton">
-            <button id="ana-ekran-btn-3" class="btn btn-secondary">Ana Ekran</button>
-        </div>
-    </div>
-
-    <div id="oyun-sonu-ekrani" class="ekran">
-        <div class="oyun-sonu-container">
-            <div id="oyun-sonu-mesaj" class="oyun-sonu-mesaj"></div>
-            <button id="ana-ekran-btn-4" class="btn btn-primary">Ana Ekran</button>
-        </div>
-        <canvas id="konfeti-canvas"></canvas>
+        <button id="ana-ekran-btn" class="btn btn-secondary">Lobiye Dön</button>
     </div>
 
     <script src="script.js"></script>
