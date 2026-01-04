@@ -5,32 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Match Master - Hafıza Oyunu</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
+    <!-- Login Ekranı -->
     <div id="login-ekrani" class="ekran aktif">
         <div class="login-container">
             <h1>Match Master</h1>
-            <p>Google hesabınızla giriş yapın</p>
+            <p>Oynamaya başlamak için Google hesabınızla giriş yapın</p>
             <button id="google-login-btn" class="btn btn-primary">Google ile Giriş Yap</button>
         </div>
     </div>
 
+    <!-- Ana Menü -->
     <div id="ana-menu" class="ekran">
         <div class="menu-container">
             <h1>Match Master</h1>
             <div id="kullanici-bilgisi" class="kullanici-bilgisi"></div>
             <div class="menu-buttons">
-                <button id="gemini-oyna-btn" class="btn btn-primary">GEMINI İLE OYNA</button>
-                <button id="lobi-btn" class="btn btn-primary">LOBİ (ONLİNE)</button>
-                <button id="tema-sec-btn" class="btn btn-secondary" style="margin-top: 10px; background: #ff9800;">TEMA: KLASİK</button>
-                <button id="cikis-btn" class="btn btn-outline">OYUNDAN ÇIK</button>
+                <button id="gemini-oyna-btn" class="btn btn-primary">Gemini ile Oyna</button>
+                <button id="tema-sec-btn" class="btn btn-primary">Tema Seç</button>
+                <button id="lobi-btn" class="btn btn-primary">Lobi (Online)</button>
+                <button id="oyundan-cik-btn" class="btn btn-secondary">Oyundan Çık</button>
             </div>
         </div>
     </div>
 
+    <!-- Zorluk Seviyesi Seçimi -->
+    <div id="zorluk-ekrani" class="ekran">
+        <div class="menu-container">
+            <h2>Zorluk Seviyesi Seçin</h2>
+            <div class="menu-buttons">
+                <button id="kolay-btn" class="btn btn-primary">Kolay</button>
+                <button id="orta-btn" class="btn btn-primary">Orta</button>
+                <button id="zor-btn" class="btn btn-primary">Zor</button>
+                <button id="ana-ekran-btn-1" class="btn btn-secondary">Ana Ekran</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lobi Ekranı -->
     <div id="lobi-ekrani" class="ekran">
         <div class="lobi-container">
             <h2>Lobi</h2>
@@ -40,6 +57,7 @@
         </div>
     </div>
 
+    <!-- Oyun Ekranı -->
     <div id="oyun-ekrani" class="ekran">
         <div class="oyun-ust-bilgi">
             <div class="skor-alani">
@@ -52,20 +70,23 @@
                     <span id="oyuncu2-skor" class="skor">0</span>
                 </div>
             </div>
-            <div id="sira-gosterge" class="sira-gosterge">Sıra: Bekleniyor...</div>
+            <div id="sira-gosterge" class="sira-gosterge">Sıra: Sen</div>
         </div>
         <div id="oyun-alani" class="oyun-alani"></div>
-        <button id="ana-ekran-btn-3" class="btn btn-secondary" style="margin-top: 20px;">ANA EKRAN</button>
+        <div class="oyun-alt-buton">
+            <button id="ana-ekran-btn-3" class="btn btn-secondary">Ana Ekran</button>
+        </div>
     </div>
 
+    <!-- Oyun Sonu Ekranı -->
     <div id="oyun-sonu-ekrani" class="ekran">
         <div class="oyun-sonu-container">
             <div id="oyun-sonu-mesaj" class="oyun-sonu-mesaj"></div>
-            <button id="ana-ekran-btn-4" class="btn btn-primary">Ana Menüye Dön</button>
+            <button id="ana-ekran-btn-4" class="btn btn-primary">Ana Ekran</button>
         </div>
+        <canvas id="konfeti-canvas"></canvas>
     </div>
 
-    <canvas id="konfeti-canvas"></canvas>
     <script src="script.js"></script>
 </body>
 </html>
