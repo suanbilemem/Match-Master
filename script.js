@@ -13,7 +13,6 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 
 let currentUser = null, currentLobbyId = null, lobbyUnsubscribe = null;
-let openCards = [];
 const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑'];
 
 function ekranDegistir(id) {
@@ -29,9 +28,7 @@ auth.onAuthStateChanged(user => {
         db.collection("onlineUsers").doc(user.uid).set({ name: user.displayName, status: "lobi", lastSeen: Date.now() });
         lobiDinle();
         davetleriDinle();
-    } else {
-        ekranDegistir('login-ekrani');
-    }
+    } else { ekranDegistir('login-ekrani'); }
 });
 
 function lobiDinle() {
@@ -59,7 +56,9 @@ async function davetEt(rakipId) {
         currentTurn: currentUser.uid,
         status: "bekliyor",
         davetEden: currentUser.displayName,
-        davetEdilenId: rakipId
+        davetEdilenId: rakipId,
+        openedCards: [],
+        matchedCards: []
     });
     odaKatil(odaId);
 }
@@ -87,13 +86,26 @@ function odaKatil(odaId) {
     lobbyUnsubscribe = db.collection("lobbies").doc(odaId).onSnapshot(doc => {
         const data = doc.data();
         if (!data) return;
-        if (document.getElementById('oyun-alani').children.length === 0) createBoard(data.symbols);
         
+        const oyunAlani = document.getElementById('oyun-alani');
+        if (oyunAlani.children.length === 0) createBoard(data.symbols);
+
+        const kartlar = oyunAlani.getElementsByClassName('kart');
+        const openedIndices = (data.openedCards || []).map(c => c.index);
+        const matchedIndices = data.matchedCards || [];
+
+        for (let i = 0; i < kartlar.length; i++) {
+            if (openedIndices.includes(i) || matchedIndices.includes(i)) {
+                kartlar[i].classList.add('acik');
+                if (matchedIndices.includes(i)) kartlar[i].classList.add('eslesen');
+            } else { kartlar[i].classList.remove('acik'); }
+        }
+
         const rakipId = data.oyuncular.find(id => id !== currentUser.uid);
         document.getElementById('oyuncu1-skor').innerText = data.scores[currentUser.uid] || 0;
         document.getElementById('oyuncu2-ad').innerText = data.playerNames[rakipId] || "Rakip";
         document.getElementById('oyuncu2-skor').innerText = data.scores[rakipId] || 0;
-        document.getElementById('sira-gosterge').innerText = data.currentTurn === currentUser.uid ? "Sıra: Sende" : "Sıra: Rakipte";
+        document.getElementById('sira-gosterge').innerText = data.currentTurn === currentUser.uid ? "Sıra: SENDE" : "Sıra: RAKİPTE";
     });
 }
 
@@ -110,29 +122,32 @@ function createBoard(symbols) {
 }
 
 async function handleCardClick(index, symbol, cardElement) {
-    const doc = await db.collection("lobbies").doc(currentLobbyId).get();
-    const data = doc.data();
-    if (data.currentTurn !== currentUser.uid || cardElement.classList.contains('acik')) return;
+    const docRef = db.collection("lobbies").doc(currentLobbyId);
+    const data = (await docRef.get()).data();
+    
+    // Güvenlik kontrolleri: Sıra sende mi? Kart zaten açık mı? Zaten 2 kart açıldı mı?
+    if (data.currentTurn !== currentUser.uid || cardElement.classList.contains('acik') || (data.openedCards || []).length >= 2) return;
 
-    cardElement.classList.add('acik');
-    openCards.push({ index, symbol, cardElement });
+    const newOpened = [...(data.openedCards || []), { index, symbol }];
+    await docRef.update({ openedCards: newOpened });
 
-    if (openCards.length === 2) {
-        const [c1, c2] = openCards;
+    if (newOpened.length === 2) {
+        const [c1, c2] = newOpened;
         if (c1.symbol === c2.symbol) {
+            // Eşleşme durumu
             const newScore = (data.scores[currentUser.uid] || 0) + 1;
-            await db.collection("lobbies").doc(currentLobbyId).update({ [`scores.${currentUser.uid}`]: newScore });
-            c1.cardElement.classList.add('eslesen');
-            c2.cardElement.classList.add('eslesen');
+            await docRef.update({
+                [`scores.${currentUser.uid}`]: newScore,
+                matchedCards: [...(data.matchedCards || []), c1.index, c2.index],
+                openedCards: []
+            });
         } else {
-            const rakipId = data.oyuncular.find(id => id !== currentUser.uid);
-            setTimeout(() => {
-                c1.cardElement.classList.remove('acik');
-                c2.cardElement.classList.remove('acik');
-                db.collection("lobbies").doc(currentLobbyId).update({ currentTurn: rakipId });
+            // Yanlış hamle durumu
+            setTimeout(async () => {
+                const rakipId = data.oyuncular.find(id => id !== currentUser.uid);
+                await docRef.update({ currentTurn: rakipId, openedCards: [] });
             }, 1000);
         }
-        openCards = [];
     }
 }
 
