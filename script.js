@@ -12,7 +12,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-let currentUser = null, currentLobbyId = null, lobbyUnsubscribe = null;
+let currentUser = null, currentMatchId = null, matchUnsubscribe = null;
 const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑'];
 
 function ekranDegistir(id) {
@@ -25,7 +25,12 @@ auth.onAuthStateChanged(user => {
         currentUser = user;
         document.getElementById('kullanici-bilgisi').innerText = `Selam, ${user.displayName}`;
         ekranDegistir('lobi-ekrani');
-        db.collection("onlineUsers").doc(user.uid).set({ name: user.displayName, status: "lobi", lastSeen: Date.now() });
+        // Koleksiyon adını onlineUsers olarak sabitledik
+        db.collection("onlineUsers").doc(user.uid).set({ 
+            displayName: user.displayName, 
+            status: "lobi", 
+            uid: user.uid 
+        });
         lobiDinle();
         davetleriDinle();
     } else { ekranDegistir('login-ekrani'); }
@@ -39,57 +44,59 @@ function lobiDinle() {
             if (doc.id !== currentUser.uid) {
                 const div = document.createElement('div');
                 div.className = "kullanici-item";
-                div.innerHTML = `<span>${doc.data().name}</span><button onclick="davetEt('${doc.id}')" class="btn-davet">Davet</button>`;
+                div.innerHTML = `<span>${doc.data().displayName}</span><button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-davet">Davet Et</button>`;
                 liste.appendChild(div);
             }
         });
     });
 }
 
-async function davetEt(rakipId) {
-    const odaId = `oda_${currentUser.uid}_${rakipId}`;
-    await db.collection("lobbies").doc(odaId).set({
+// DAVET VE MAÇ OLUŞTURMA (Firebase Yapına Uygun)
+async function davetEt(rakipId, rakipAd) {
+    const matchId = `match_${Date.now()}`;
+    await db.collection("matches").doc(matchId).set({
+        gameId: matchId,
         symbols: [...meyveler, ...meyveler].sort(() => Math.random() - 0.5),
-        oyuncular: [currentUser.uid, rakipId],
-        playerNames: { [currentUser.uid]: currentUser.displayName },
-        scores: { [currentUser.uid]: 0, [rakipId]: 0 },
-        currentTurn: currentUser.uid,
-        status: "bekliyor",
-        davetEden: currentUser.displayName,
-        davetEdilenId: rakipId,
+        player1: { uid: currentUser.uid, displayName: currentUser.displayName },
+        player2: { uid: rakipId, displayName: rakipAd },
+        scores: { player1: 0, player2: 0 },
+        currentPlayer: 1, // 1: Player1, 2: Player2
+        status: "pending",
         openedCards: [],
         matchedCards: []
     });
-    odaKatil(odaId);
+    maçaKatil(matchId);
 }
 
 function davetleriDinle() {
-    db.collection("lobbies").where("davetEdilenId", "==", currentUser.uid).where("status", "==", "bekliyor").onSnapshot(snap => {
+    db.collection("matches")
+      .where("player2.uid", "==", currentUser.uid)
+      .where("status", "==", "pending")
+      .onSnapshot(snap => {
         snap.forEach(doc => {
-            if (confirm(`${doc.data().davetEden} seni maça davet ediyor! Katılmak ister misin?`)) {
-                db.collection("lobbies").doc(doc.id).update({ 
-                    status: "aktif",
-                    [`playerNames.${currentUser.uid}`]: currentUser.displayName 
-                });
-                odaKatil(doc.id);
+            if (confirm(`${doc.data().player1.displayName} seni maça davet ediyor!`)) {
+                db.collection("matches").doc(doc.id).update({ status: "active" });
+                maçaKatil(doc.id);
             }
         });
     });
 }
 
-function odaKatil(odaId) {
-    currentLobbyId = odaId;
+// OYUN SENKRONİZASYONU
+function maçaKatil(matchId) {
+    currentMatchId = matchId;
     db.collection("onlineUsers").doc(currentUser.uid).update({ status: "oyunda" });
     ekranDegistir('oyun-ekrani');
     
-    if (lobbyUnsubscribe) lobbyUnsubscribe();
-    lobbyUnsubscribe = db.collection("lobbies").doc(odaId).onSnapshot(doc => {
+    if (matchUnsubscribe) matchUnsubscribe();
+    matchUnsubscribe = db.collection("matches").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
         if (!data) return;
         
         const oyunAlani = document.getElementById('oyun-alani');
         if (oyunAlani.children.length === 0) createBoard(data.symbols);
 
+        // Kartları senkronize et
         const kartlar = oyunAlani.getElementsByClassName('kart');
         const openedIndices = (data.openedCards || []).map(c => c.index);
         const matchedIndices = data.matchedCards || [];
@@ -101,11 +108,17 @@ function odaKatil(odaId) {
             } else { kartlar[i].classList.remove('acik'); }
         }
 
-        const rakipId = data.oyuncular.find(id => id !== currentUser.uid);
-        document.getElementById('oyuncu1-skor').innerText = data.scores[currentUser.uid] || 0;
-        document.getElementById('oyuncu2-ad').innerText = data.playerNames[rakipId] || "Rakip";
-        document.getElementById('oyuncu2-skor').innerText = data.scores[rakipId] || 0;
-        document.getElementById('sira-gosterge').innerText = data.currentTurn === currentUser.uid ? "Sıra: SENDE" : "Sıra: RAKİPTE";
+        // Sıra ve Skor Paneli
+        const isPlayer1 = data.player1.uid === currentUser.uid;
+        const siraBende = (isPlayer1 && data.currentPlayer === 1) || (!isPlayer1 && data.currentPlayer === 2);
+        
+        document.getElementById('oyuncu1-ad').innerText = "Sen";
+        document.getElementById('oyuncu1-skor').innerText = isPlayer1 ? data.scores.player1 : data.scores.player2;
+        
+        document.getElementById('oyuncu2-ad').innerText = isPlayer1 ? data.player2.displayName : data.player1.displayName;
+        document.getElementById('oyuncu2-skor').innerText = isPlayer1 ? data.scores.player2 : data.scores.player1;
+        
+        document.getElementById('sira-gosterge').innerText = siraBende ? "Sıra: SENDE" : "Sıra: RAKİPTE";
     });
 }
 
@@ -116,17 +129,19 @@ function createBoard(symbols) {
         const card = document.createElement('div');
         card.className = 'kart';
         card.innerHTML = s;
-        card.onclick = () => handleCardClick(i, s, card);
+        card.onclick = () => handleCardClick(i, s);
         oyunAlani.appendChild(card);
     });
 }
 
-async function handleCardClick(index, symbol, cardElement) {
-    const docRef = db.collection("lobbies").doc(currentLobbyId);
+async function handleCardClick(index, symbol) {
+    const docRef = db.collection("matches").doc(currentMatchId);
     const data = (await docRef.get()).data();
     
-    // Güvenlik kontrolleri: Sıra sende mi? Kart zaten açık mı? Zaten 2 kart açıldı mı?
-    if (data.currentTurn !== currentUser.uid || cardElement.classList.contains('acik') || (data.openedCards || []).length >= 2) return;
+    const isPlayer1 = data.player1.uid === currentUser.uid;
+    const siraBende = (isPlayer1 && data.currentPlayer === 1) || (!isPlayer1 && data.currentPlayer === 2);
+
+    if (!siraBende || (data.openedCards || []).length >= 2) return;
 
     const newOpened = [...(data.openedCards || []), { index, symbol }];
     await docRef.update({ openedCards: newOpened });
@@ -134,18 +149,18 @@ async function handleCardClick(index, symbol, cardElement) {
     if (newOpened.length === 2) {
         const [c1, c2] = newOpened;
         if (c1.symbol === c2.symbol) {
-            // Eşleşme durumu
-            const newScore = (data.scores[currentUser.uid] || 0) + 1;
+            const playerKey = isPlayer1 ? "player1" : "player2";
             await docRef.update({
-                [`scores.${currentUser.uid}`]: newScore,
+                [`scores.${playerKey}`]: data.scores[playerKey] + 1,
                 matchedCards: [...(data.matchedCards || []), c1.index, c2.index],
                 openedCards: []
             });
         } else {
-            // Yanlış hamle durumu
             setTimeout(async () => {
-                const rakipId = data.oyuncular.find(id => id !== currentUser.uid);
-                await docRef.update({ currentTurn: rakipId, openedCards: [] });
+                await docRef.update({ 
+                    currentPlayer: data.currentPlayer === 1 ? 2 : 1, 
+                    openedCards: [] 
+                });
             }, 1000);
         }
     }
