@@ -1,31 +1,80 @@
-// 1. Firebase Yapılandırması (Senin Bilgilerin)
+// 1. Firebase Yapılandırması
 const firebaseConfig = {
     apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
     authDomain: "match-master-af628.firebaseapp.com",
+    databaseURL: "https://match-master-af628-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "match-master-af628",
     storageBucket: "match-master-af628.firebasestorage.app",
     messagingSenderId: "508395504322",
     appId: "1:508395504322:web:93343b6445b24a27b5715b"
 };
 
-// 2. Firebase Başlatma (Firestore için güncellendi)
+// 2. Firebase Başlatma
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore(); // Firestore kullanımı
+const db = firebase.firestore();
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
 
-let currentUserName = "KEREM GÖNEÇ"; 
-let myDocId = "HMtOT3ALWwxt96ZMxv9FyWneUOr1"; // Firebase panelindeki UID'n
+// Global Değişkenler
+let currentUserName = "";
+let myDocId = "";
 
-// Dropdown aç/kapat
-function toggleDropdown() {
-    document.getElementById("theme-menu").classList.toggle("show");
+// --- 🔑 OTURUM VE GİRİŞ İŞLEMLERİ ---
+
+// Google ile Giriş
+async function loginWithGoogle() {
+    try {
+        await auth.signInWithPopup(provider);
+    } catch (error) {
+        console.error("Giriş hatası:", error);
+        alert("Giriş yapılamadı!");
+    }
 }
 
-// Lobiye giriş ve Firestore'a yazma
+// Çıkış Yap (Hem lobiden hem hesaptan)
+async function logout() {
+    try {
+        // Eğer lobide kayıtlıysa Firestore'dan sil
+        if (myDocId) {
+            await db.collection("online_users").doc(myDocId).delete();
+        }
+        await auth.signOut();
+        location.reload(); // Sayfayı sıfırla
+    } catch (error) {
+        console.error("Çıkış hatası:", error);
+    }
+}
+
+// Oturum Takibi (Kullanıcı giriş yaptı mı kontrol eder)
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        currentUserName = user.displayName;
+        myDocId = user.uid; //
+        document.querySelector("h1").innerText = `Merhaba, ${currentUserName.toUpperCase()}`; //
+    } else {
+        // Eğer giriş yapılmamışsa giriş ekranına yönlendirilebilir
+        console.log("Oturum kapalı");
+    }
+});
+
+// --- 📋 TEMA VE LOBİ MANTIĞI ---
+
+// Dropdown Menü Aç/Kapat
+function toggleDropdown() {
+    document.getElementById("theme-menu").classList.toggle("show"); //
+}
+
+// Lobiye Giriş (Tek lobi, herkes birbirini görür)
 async function enterLobby(selectedTheme) {
+    if (!auth.currentUser) {
+        alert("Önce giriş yapmalısın!");
+        return loginWithGoogle();
+    }
+
     document.getElementById("home-screen").style.display = "none";
-    document.getElementById("lobby-screen").style.display = "block";
+    document.getElementById("lobby-screen").style.display = "block"; //
     
-    // Firestore'da 'online_users' koleksiyonuna kendini ekle
+    // Firestore'a online kaydı bırak
     try {
         await db.collection("online_users").doc(myDocId).set({
             displayName: currentUserName,
@@ -33,26 +82,23 @@ async function enterLobby(selectedTheme) {
             status: "online",
             lastSeen: firebase.firestore.FieldValue.serverTimestamp()
         });
-        console.log("Lobiye giriş yapıldı:", selectedTheme);
-    } catch (error) {
-        console.error("Giriş hatası:", error);
+    } catch (e) {
+        console.error("Lobi kaydı başarısız:", e);
     }
 
-    loadPlayersFirestore();
+    loadPlayers();
 }
 
-// Tüm oyuncuları Firestore'dan anlık çekme
-function loadPlayersFirestore() {
+// Oyuncuları Listeleme
+function loadPlayers() {
     const listDiv = document.getElementById("player-list");
 
-    // 'online_users' koleksiyonundaki herkesi dinle (Tek lobi)
     db.collection("online_users").onSnapshot((snapshot) => {
         listDiv.innerHTML = "";
         let foundOthers = false;
 
         snapshot.forEach((doc) => {
             const player = doc.data();
-            
             // Kendini listede gösterme
             if (doc.id !== myDocId) {
                 const row = document.createElement("div");
@@ -67,17 +113,22 @@ function loadPlayersFirestore() {
         });
 
         if (!foundOthers) {
-            listDiv.innerHTML = "<p style='font-size:12px; color:#888;'>Şu an başka kimse yok...</p>";
+            listDiv.innerHTML = "<p style='font-size:12px; color:#888;'>Şu an kimse yok...</p>"; //
         }
     });
 }
 
-// Ana Ekran - Lobiden Ayrılma
+// Ana Ekrana Geri Dön (Lobiden çıkış)
 async function goHome() {
-    // Firestore'dan kaydını sil
-    await db.collection("online_users").doc(myDocId).delete();
-    
+    if (myDocId) {
+        await db.collection("online_users").doc(myDocId).delete();
+    }
     document.getElementById("lobby-screen").style.display = "none";
     document.getElementById("home-screen").style.display = "block";
     document.getElementById("theme-menu").classList.remove("show");
+}
+
+// Basit Davet Fonksiyonu
+function invite(targetId) {
+    alert("Davet gönderildi: " + targetId);
 }
