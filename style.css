@@ -1,109 +1,190 @@
-body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Arial', sans-serif;
-    background: linear-gradient(135deg, #4b1a2e 0%, #a84120 50%, #f39c12 100%);
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* GENEL AYARLAR */
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+
+body { 
+    /* Sevdiğin eski gradyan renklerin */
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); 
+    color: white; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    min-height: 100vh; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    overflow: hidden; /* Sayfanın aşağı kaymasını engeller */
+}
+
+/* EKRAN YÖNETİMİ */
+.ekran { 
+    display: none; 
+    width: 100%; 
+    height: 100vh; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 10px; 
+}
+
+.ekran.aktif { 
+    display: flex; 
+}
+
+/* LOBİ VE MENÜ KONTEYNERLARI */
+.login-container, .menu-container { 
+    background: rgba(0, 0, 0, 0.7); 
+    backdrop-filter: blur(10px); 
+    padding: 30px; 
+    border-radius: 20px; 
+    text-align: center; 
+    width: 90%; 
+    max-width: 350px; 
+}
+
+/* SKOR ALANI VE PARLAMA EFEKTİ */
+.skor-alani { 
+    display: flex; 
+    width: 100%; 
+    max-width: 380px; 
+    gap: 10px; 
+    margin-bottom: 10px; 
+}
+
+.skor-kart { 
+    flex: 1; 
+    background: rgba(255,255,255,0.15); 
+    padding: 10px; 
+    border-radius: 12px; 
+    text-align: center; 
+    border: 2px solid transparent; 
+    transition: all 0.3s ease;
+}
+
+.skor-sayi { 
+    font-size: 1.2rem; 
+    font-weight: bold; 
+    display: block;
+}
+
+/* SIRA KİMDEYSE O TARAF PARLASIN */
+.sira-bende { 
+    border-color: #fdbb2d; 
+    background: rgba(253, 187, 45, 0.3) !important;
+    box-shadow: 0 0 15px #fdbb2d;
+    transform: scale(1.03);
+}
+
+/* OYUN ALANI (4x5 GRID) */
+.oyun-alani { 
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); /* Yan yana 4 kart */
+    gap: 8px; 
+    margin: 10px 0; 
+    width: 100%; 
+    max-width: 360px;
+}
+
+.kart { 
+    aspect-ratio: 1/1; /* Kartları kare yapar, ekrana sığdırır */
+    background: white; 
+    border-radius: 10px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    cursor: pointer; 
+    position: relative; 
+    font-size: 1.8rem; /* Emoji boyutu */
+    transition: transform 0.3s;
+}
+
+.kart::after { 
+    content: '?'; 
+    position: absolute; 
+    background: #333; 
+    width: 100%; 
+    height: 100%; 
+    border-radius: 10px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
     color: white;
 }
 
-.panel {
-    background: #2b1b17;
-    padding: 30px;
-    border-radius: 30px;
-    width: 360px;
-    text-align: center;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-    position: relative;
-    min-height: 420px;
+.kart.acik::after, .kart.eslesen::after { 
+    opacity: 0; 
+    transform: rotateY(180deg); 
 }
 
-.dropbtn {
-    background-color: #f39c12;
-    color: white;
-    padding: 12px;
-    font-size: 16px;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    width: 100%;
-    font-weight: bold;
+.kart.eslesen { 
+    background: #38ef7d; 
+    box-shadow: 0 0 10px #38ef7d; 
+}
+
+/* BİTİŞ EKRANI (OVERLAY - TAM ORTADA) */
+.bitis-mesaji {
+    position: fixed; /* Ekranın neresinde olursan ol sabit kalır */
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); /* Tam merkezleme */
+    background: rgba(0, 0, 0, 0.95); 
+    padding: 30px; 
+    border-radius: 25px; 
+    text-align: center; 
+    z-index: 10000; /* Her şeyin en üstünde */
+    border: 3px solid #fdbb2d;
+    width: 85%;
+    max-width: 300px;
+    box-shadow: 0 0 100px rgba(0,0,0,0.9);
+}
+
+/* BUTONLAR */
+.btn { 
+    padding: 12px; 
+    border-radius: 10px; 
+    border: none; 
+    cursor: pointer; 
+    font-weight: bold; 
+    width: 100%; 
     margin-top: 10px;
+    font-size: 1rem;
 }
 
-.dropdown-content {
-    display: none;
-    background-color: #3d2b26;
-    border-radius: 10px;
-    margin-top: 5px;
-    flex-direction: column;
+.btn-primary { 
+    background: white; 
+    color: #b21f1f; 
 }
 
-.dropdown-content button {
-    background: none;
-    border: none;
-    color: white;
-    padding: 12px;
-    cursor: pointer;
-    border-bottom: 1px solid #4b3630;
+.btn-secondary { 
+    background: rgba(255,255,255,0.2); 
+    color: white; 
 }
 
-.show { display: flex; }
-
-.online-box {
-    background: #3d2b26;
-    border-radius: 15px;
-    padding: 15px;
-    margin-top: 20px;
+/* LOBİ LİSTESİ */
+.liste-alani { 
+    background: rgba(255, 255, 255, 0.1); 
+    border-radius: 12px; 
+    margin: 15px 0; 
+    padding: 10px; 
+    max-height: 200px; 
+    overflow-y: auto; 
 }
 
-.player-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #4b3630;
+.kullanici-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 8px; 
+    border-bottom: 1px solid rgba(255,255,255,0.1); 
 }
 
-.play-btn {
-    background: #555;
-    color: white;
-    border: none;
-    padding: 5px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.exit-btn {
-    background: #4b3630;
-    color: #ccc;
-    border: none;
-    padding: 12px;
-    width: 100%;
-    border-radius: 10px;
-    margin-top: 20px;
-    cursor: pointer;
-}
-
-.fixed-footer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 15px 0;
-    background: #1a110f;
-    border-bottom-left-radius: 30px;
-    border-bottom-right-radius: 30px;
-}
-
-.footer-btn {
-    background: none;
-    border: 1px solid #888;
-    color: white;
-    padding: 5px 20px;
-    border-radius: 20px;
-    cursor: pointer;
+.btn-davet { 
+    background: #38ef7d; 
+    color: #111; 
+    padding: 5px 12px; 
+    border-radius: 6px; 
+    border: none; 
+    cursor: pointer; 
+    font-weight: bold;
 }
