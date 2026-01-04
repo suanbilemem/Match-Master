@@ -3,55 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match Master - Oyun Odası</title>
+    <title>Match Master - Oyun</title>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #2b1b17 0%, #4b1a2e 100%);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center;
-        }
-        .game-panel {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        }
-        .room-id {
-            color: #f39c12;
-            font-weight: bold;
-            font-size: 1.2em;
-        }
-        .status {
-            margin-top: 20px;
-            color: #aaa;
-        }
+        body { margin: 0; background: #2b1b17; color: white; font-family: sans-serif; text-align: center; }
+        .header { padding: 20px; background: rgba(0,0,0,0.3); display: flex; justify-content: space-around; font-size: 1.2em; }
+        .grid { display: grid; grid-template-columns: repeat(4, 80px); gap: 10px; justify-content: center; margin-top: 30px; }
+        .card { width: 80px; height: 100px; background: #4b1a2e; border-radius: 8px; cursor: pointer; font-size: 2em; display: flex; align-items: center; justify-content: center; user-select: none; }
+        .card.flipped { background: #f39c12; color: white; }
+        .card.matched { visibility: hidden; }
+        .score-box { color: #f39c12; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="game-panel">
-        <h1>Oyun Odasına Bağlandınız! 🚀</h1>
-        <p>Oda ID: <span id="room-display" class="room-id">Yükleniyor...</span></p>
-        <p class="status">Rakip bekleniyor ve kartlar hazırlanıyor...</p>
+    <div class="header">
+        <div>Siz: <span id="my-score" class="score-box">0</span></div>
+        <div id="turn-info">Sıra Bekleniyor...</div>
+        <div>Rakip: <span id="opp-score" class="score-box">0</span></div>
     </div>
 
+    <div class="grid" id="game-grid">
+        </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+
     <script>
-        // URL'deki ?room=... kısmından Oda ID'sini çekiyoruz
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
+            authDomain: "match-master-af628.firebaseapp.com",
+            projectId: "match-master-af628",
+            storageBucket: "match-master-af628.firebasestorage.app",
+            messagingSenderId: "508395504322",
+            appId: "1:508395504322:web:93343b6445b24a27b5715b"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         const params = new URLSearchParams(window.location.search);
         const roomId = params.get('room');
+        const grid = document.getElementById("game-grid");
         
-        if (roomId) {
-            document.getElementById('room-display').innerText = roomId;
-        } else {
-            document.getElementById('room-display').innerText = "Hata: Oda bulunamadı!";
+        let symbols = ["🍎", "🍌", "🍇", "🍓", "🍒", "🥝", "🍍", "🍉"];
+        let cards = [...symbols, ...symbols]; // 16 kart
+
+        // 1. Oyun Alanını Kur
+        function createBoard() {
+            grid.innerHTML = "";
+            cards.forEach((symbol, index) => {
+                const card = document.createElement("div");
+                card.className = "card";
+                card.dataset.index = index;
+                card.onclick = () => flipCard(index, symbol);
+                grid.appendChild(card);
+            });
         }
+
+        // 2. Kart Açma İşlemi
+        async function flipCard(index, symbol) {
+            // Burada Firebase'e "Bu kart açıldı" bilgisini göndereceğiz
+            const cardEl = document.querySelectorAll(".card")[index];
+            cardEl.classList.add("flipped");
+            cardEl.innerText = symbol;
+            
+            await db.collection("rooms").doc(roomId).collection("moves").add({
+                player: "current", // Daha sonra auth'dan gelecek
+                index: index,
+                symbol: symbol,
+                time: Date.now()
+            });
+        }
+
+        createBoard();
+        
+        // 3. Rakibin Hareketlerini Dinle
+        db.collection("rooms").doc(roomId).collection("moves").onSnapshot(snap => {
+            snap.docChanges().forEach(change => {
+                if (change.type === "added") {
+                    const move = change.data();
+                    const cardEl = document.querySelectorAll(".card")[move.index];
+                    cardEl.classList.add("flipped");
+                    cardEl.innerText = move.symbol;
+                }
+            });
+        });
     </script>
 </body>
 </html>
