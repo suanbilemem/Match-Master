@@ -169,12 +169,25 @@ async function handleCardClick(index, symbol) {
 }
 
 function oyunBitisiniGoster(sonuc) {
+    // Eğer zaten ekran varsa tekrar oluşturma
+    if (document.querySelector('.bitis-mesaji')) return;
+
     const bitisDiv = document.createElement('div');
     bitisDiv.className = 'bitis-mesaji';
+    
     let emoji = (sonuc === "yendin") ? "🏆" : (sonuc === "yenildin" ? "😢" : "😊");
     let mesaj = (sonuc === "yendin") ? "TEBRİKLER!" : (sonuc === "yenildin" ? "YENİLDİNİZ" : "BERABERE");
-    if (sonuc === "yendin") confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    bitisDiv.innerHTML = `<span style="font-size:4rem">${emoji}</span><h2>${mesaj}</h2><button onclick="location.reload()" class="btn btn-primary">Lobiye Dön</button>`;
+    
+    if (sonuc === "yendin") {
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    }
+
+    bitisDiv.innerHTML = `
+        <div style="font-size: 5rem; margin-bottom: 10px;">${emoji}</div>
+        <h2 style="color: white; margin-bottom: 20px;">${mesaj}</h2>
+        <button onclick="location.reload()" class="btn btn-primary" style="width: 100%;">Lobiye Dön</button>
+    `;
+    
     document.body.appendChild(bitisDiv);
 }
 
