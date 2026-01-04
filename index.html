@@ -10,26 +10,29 @@
 
     <div class="app-container">
         <div id="home-screen" class="panel">
-            <h1 id="welcome-text">Yükleniyor...</h1>
-            <p class="subtitle">Bir tema seç ve rakibini davet et</p>
+            <h1 id="welcome-text">Match Master</h1>
+            <p class="subtitle" id="sub-text">Devam etmek için giriş yapın</p>
 
-            <div class="dropdown">
-                <button class="dropbtn" onclick="toggleDropdown()">Temalar</button>
-                <div id="theme-menu" class="dropdown-content">
-                    <button onclick="enterLobby('Meyveler')">Meyveler</button>
-                    <button onclick="enterLobby('Sprunki')">Sprunki</button>
-                    <button onclick="enterLobby('Minecraft')">Minecraft</button>
+            <button id="login-btn" class="dropbtn" onclick="loginWithGoogle()" style="display: none;">Google ile Giriş Yap</button>
+
+            <div id="theme-section" style="display: none;">
+                <div class="dropdown">
+                    <button class="dropbtn" onclick="toggleDropdown()">Temalar</button>
+                    <div id="theme-menu" class="dropdown-content">
+                        <button onclick="enterLobby('Meyveler')">Meyveler</button>
+                        <button onclick="enterLobby('Sprunki')">Sprunki</button>
+                        <button onclick="enterLobby('Minecraft')">Minecraft</button>
+                    </div>
                 </div>
+                <button class="exit-btn" onclick="logout()">Çıkış Yap</button>
             </div>
-
-            <button class="exit-btn" onclick="logout()">Çıkış Yap</button>
         </div>
 
         <div id="lobby-screen" class="panel" style="display: none;">
             <h1 id="lobby-title">Oyun Lobisi</h1>
             <div class="online-box">
                 <p class="box-header">Çevrimiçi Oyuncular</p>
-                <div id="player-list" class="sade-liste"></div>
+                <div id="player-list"></div>
             </div>
             <div class="fixed-footer">
                 <button class="footer-btn" onclick="goHome()">Ana Ekran</button>

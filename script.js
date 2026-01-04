@@ -15,62 +15,54 @@ const provider = new firebase.auth.GoogleAuthProvider();
 let currentUserName = "";
 let myDocId = "";
 
-// --- 🔑 GİRİŞ VE ÇIKIŞ YÖNETİMİ ---
+// --- 🔑 OTURUM YÖNETİMİ ---
 
 auth.onAuthStateChanged((user) => {
-    const welcomeTitle = document.getElementById("welcome-text");
-    const themeBtn = document.querySelector(".dropbtn");
+    const loginBtn = document.getElementById("login-btn");
+    const themeSection = document.getElementById("theme-section");
+    const welcomeText = document.getElementById("welcome-text");
+    const subText = document.getElementById("sub-text");
 
     if (user) {
-        // GİRİŞ YAPILMIŞSA
+        // Giriş Yapılmışsa
         currentUserName = user.displayName;
-        myDocId = user.uid;
-        welcomeTitle.innerText = `Merhaba, ${currentUserName.toUpperCase()}`;
-        themeBtn.style.display = "block"; // Temalar butonunu göster
+        myDocId = user.uid; //
+        welcomeText.innerText = `Merhaba, ${currentUserName.toUpperCase()}`;
+        subText.innerText = "Bir tema seç ve rakibini davet et";
+        
+        loginBtn.style.display = "none";
+        themeSection.style.display = "block";
         listenForInvites(); 
     } else {
-        // GİRİŞ YAPILMAMIŞSA
-        welcomeTitle.innerText = "Match Master'a Hoş Geldin";
-        themeBtn.style.display = "none"; // Giriş yapmadan tema seçtirme
-        console.log("Oturum kapalı.");
+        // Giriş Yapılmamışsa
+        welcomeText.innerText = "Match Master";
+        subText.innerText = "Devam etmek için giriş yapın";
+        
+        loginBtn.style.display = "block"; // Giriş butonunu göster
+        themeSection.style.display = "none"; // Temaları gizle
     }
 });
 
-// ÇIKIŞ YAP (Butona tıklandığında çalışır)
-async function logout() {
-    try {
-        // 1. Önce online listesinden sil
-        if (myDocId) {
-            await db.collection("online_users").doc(myDocId).delete();
-        }
-        // 2. Firebase oturumunu kapat
-        await auth.signOut();
-        alert("Başarıyla çıkış yapıldı.");
-        // 3. Sayfayı en temiz haline döndür
-        window.location.href = window.location.pathname; 
-    } catch (e) {
-        console.error("Çıkış hatası:", e);
-    }
-}
-
-// GİRİŞ YAP (Butona tıklandığında çalışır - Tarayıcı engellemez)
 async function loginWithGoogle() {
     try {
         await auth.signInWithPopup(provider);
     } catch (e) {
-        alert("Giriş penceresi engellendi veya kapatıldı. Lütfen tekrar deneyin.");
+        alert("Giriş penceresi engellendi. Lütfen adres çubuğundaki engel işaretine tıklayıp izin verin."); //
     }
+}
+
+async function logout() {
+    try {
+        if (myDocId) await db.collection("online_users").doc(myDocId).delete();
+        await auth.signOut();
+        location.reload(); 
+    } catch (e) { console.error(e); }
 }
 
 // --- 📋 LOBİ VE DAVETİYE ---
 
 function toggleDropdown() {
-    // Eğer giriş yoksa önce giriş yaptır
-    if (!auth.currentUser) {
-        loginWithGoogle();
-    } else {
-        document.getElementById("theme-menu").classList.toggle("show");
-    }
+    document.getElementById("theme-menu").classList.toggle("show");
 }
 
 async function enterLobby(selectedTheme) {
