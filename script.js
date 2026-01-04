@@ -7,7 +7,6 @@ const firebaseConfig = {
     appId: "1:508395504322:web:93343b6445b24a27b5715b"
 };
 
-// Firebase'i Başlat
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
@@ -16,58 +15,73 @@ const provider = new firebase.auth.GoogleAuthProvider();
 let currentUserName = "";
 let myDocId = "";
 
-// --- 🔑 GİRİŞ YÖNETİMİ ---
+// --- 🔑 GİRİŞ VE ÇIKIŞ YÖNETİMİ ---
 
-// Sayfa yüklendiğinde oturumu kontrol et
 auth.onAuthStateChanged((user) => {
+    const welcomeTitle = document.getElementById("welcome-text");
+    const themeBtn = document.querySelector(".dropbtn");
+
     if (user) {
-        // Giriş yapılmışsa bilgileri al
+        // GİRİŞ YAPILMIŞSA
         currentUserName = user.displayName;
         myDocId = user.uid;
-        document.getElementById("welcome-text").innerText = `Merhaba, ${currentUserName.toUpperCase()}`;
-        listenForInvites(); // Davetiyeleri dinlemeye başla
+        welcomeTitle.innerText = `Merhaba, ${currentUserName.toUpperCase()}`;
+        themeBtn.style.display = "block"; // Temalar butonunu göster
+        listenForInvites(); 
     } else {
-        // Giriş yapılmamışsa Google Popup aç
-        loginWithGoogle();
+        // GİRİŞ YAPILMAMIŞSA
+        welcomeTitle.innerText = "Match Master'a Hoş Geldin";
+        themeBtn.style.display = "none"; // Giriş yapmadan tema seçtirme
+        console.log("Oturum kapalı.");
     }
 });
 
+// ÇIKIŞ YAP (Butona tıklandığında çalışır)
+async function logout() {
+    try {
+        // 1. Önce online listesinden sil
+        if (myDocId) {
+            await db.collection("online_users").doc(myDocId).delete();
+        }
+        // 2. Firebase oturumunu kapat
+        await auth.signOut();
+        alert("Başarıyla çıkış yapıldı.");
+        // 3. Sayfayı en temiz haline döndür
+        window.location.href = window.location.pathname; 
+    } catch (e) {
+        console.error("Çıkış hatası:", e);
+    }
+}
+
+// GİRİŞ YAP (Butona tıklandığında çalışır - Tarayıcı engellemez)
 async function loginWithGoogle() {
     try {
         await auth.signInWithPopup(provider);
     } catch (e) {
-        console.error("Giriş iptal edildi:", e);
+        alert("Giriş penceresi engellendi veya kapatıldı. Lütfen tekrar deneyin.");
     }
-}
-
-async function logout() {
-    try {
-        // Lobiden kaydı sil ve oturumu kapat
-        if (myDocId) await db.collection("online_users").doc(myDocId).delete();
-        await auth.signOut();
-        location.reload(); 
-    } catch (e) { console.error(e); }
 }
 
 // --- 📋 LOBİ VE DAVETİYE ---
 
 function toggleDropdown() {
-    document.getElementById("theme-menu").classList.toggle("show");
+    // Eğer giriş yoksa önce giriş yaptır
+    if (!auth.currentUser) {
+        loginWithGoogle();
+    } else {
+        document.getElementById("theme-menu").classList.toggle("show");
+    }
 }
 
 async function enterLobby(selectedTheme) {
-    if (!myDocId) return loginWithGoogle();
-
     document.getElementById("home-screen").style.display = "none";
     document.getElementById("lobby-screen").style.display = "block";
     
-    // Firestore'a oyuncuyu ekle
     await db.collection("online_users").doc(myDocId).set({
         displayName: currentUserName,
         theme: selectedTheme,
         status: "online"
     });
-
     loadPlayers();
 }
 
@@ -76,7 +90,6 @@ function loadPlayers() {
     db.collection("online_users").onSnapshot((snapshot) => {
         listDiv.innerHTML = "";
         snapshot.forEach((doc) => {
-            // Kendini listede gösterme
             if (doc.id !== myDocId) {
                 const p = doc.data();
                 const row = document.createElement("div");
@@ -89,7 +102,6 @@ function loadPlayers() {
     });
 }
 
-// Davet Gönder
 async function sendInvite(targetId) {
     await db.collection("invites").doc(targetId).set({
         fromName: currentUserName,
@@ -98,16 +110,13 @@ async function sendInvite(targetId) {
     alert("Davet iletildi!");
 }
 
-// Gelen Davetleri Dinle
 function listenForInvites() {
     db.collection("invites").doc(myDocId).onSnapshot((doc) => {
         if (doc.exists && doc.data().status === "pending") {
             const data = doc.data();
-            // Karşı tarafa onay penceresi çıkar
             if (confirm(`${data.fromName} seni oyuna davet ediyor!`)) {
                 alert("Oyun Başlıyor!");
             }
-            // Davet kutusunu temizle
             db.collection("invites").doc(myDocId).delete();
         }
     });
