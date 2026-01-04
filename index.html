@@ -3,32 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match Master - Tema Seçimi</title>
+    <title>Match Master</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="app-wrapper">
-        <div id="home-screen" class="screen">
+    <div class="app-container">
+        <div id="home-screen" class="panel">
             <h1>Merhaba, KEREM GÖNEÇ</h1>
-            <p class="subtitle">Tema Seç</p>
+            <p class="subtitle">Bir tema seç ve rakibini davet et</p>
 
             <div class="dropdown">
-                <button id="theme-btn" class="main-btn" onclick="toggleDropdown()">Temalar</button>
-                <div id="dropdown-menu" class="dropdown-content">
+                <button class="dropbtn" onclick="toggleDropdown()">Temalar</button>
+                <div id="theme-menu" class="dropdown-content">
                     <button onclick="enterLobby('Meyveler')">Meyveler</button>
                     <button onclick="enterLobby('Sprunki')">Sprunki</button>
                     <button onclick="enterLobby('Minecraft')">Minecraft</button>
                 </div>
             </div>
 
-            <button class="logout-btn">Çıkış Yap</button>
+            <button class="exit-btn">Çıkış Yap</button>
         </div>
 
-        <div id="lobby-screen" class="screen" style="display: none;">
-            <h2 id="lobby-title">Lobi</h2>
+        <div id="lobby-screen" class="panel" style="display: none;">
+            <h1 id="lobby-title">Oyun Lobisi</h1>
+            
             <div class="online-box">
-                <p class="box-title">Çevrimiçi Oyuncular</p>
+                <p class="box-header">Çevrimiçi Oyuncular</p>
                 <div id="player-list" class="sade-liste">
                     </div>
             </div>
