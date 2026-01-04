@@ -1,4 +1,3 @@
-// --- FIREBASE YAPILANDIRMASI (BURASI KRİTİK) ---
 const firebaseConfig = {
     apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
     authDomain: "match-master-af628.firebaseapp.com",
@@ -9,18 +8,14 @@ const firebaseConfig = {
     appId: "1:508395504322:web:93343b6445b24a27b5715b"
 };
 
-// Firebase'i başlat
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// --- DEĞİŞKENLER ---
-let currentUser = null;
-let currentMatchId = null;
-let matchUnsubscribe = null;
-const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑'];
+let currentUser = null, currentMatchId = null, matchUnsubscribe = null;
+// 10 Çeşit Meyve (Toplam 20 Kart)
+const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑', '🥝', '🥥'];
 
-// --- GİRİŞ VE EKRAN YÖNETİMİ ---
 function ekranDegistir(id) {
     document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
     document.getElementById(id).classList.add('aktif');
@@ -31,19 +26,12 @@ auth.onAuthStateChanged(user => {
         currentUser = user;
         document.getElementById('kullanici-bilgisi').innerText = `Selam, ${user.displayName}`;
         ekranDegistir('lobi-ekrani');
-        db.collection("onlineUsers").doc(user.uid).set({ 
-            displayName: user.displayName, 
-            status: "lobi", 
-            uid: user.uid 
-        });
+        db.collection("onlineUsers").doc(user.uid).set({ displayName: user.displayName, status: "lobi", uid: user.uid });
         lobiDinle();
         davetleriDinle();
-    } else { 
-        ekranDegistir('login-ekrani'); 
-    }
+    } else { ekranDegistir('login-ekrani'); }
 });
 
-// --- LOBİ VE DAVET SİSTEMİ ---
 function lobiDinle() {
     db.collection("onlineUsers").where("status", "==", "lobi").onSnapshot(snap => {
         const liste = document.getElementById('kullanici-listesi');
@@ -52,7 +40,7 @@ function lobiDinle() {
             if (doc.id !== currentUser.uid) {
                 const div = document.createElement('div');
                 div.className = "kullanici-item";
-                div.innerHTML = `<span>${doc.data().displayName}</span><button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-davet">Davet Et</button>`;
+                div.innerHTML = `<span>${doc.data().displayName}</span><button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-davet">Oyna</button>`;
                 liste.appendChild(div);
             }
         });
@@ -76,10 +64,8 @@ async function davetEt(rakipId, rakipAd) {
 }
 
 function davetleriDinle() {
-    db.collection("matches")
-      .where("player2.uid", "==", currentUser.uid)
-      .where("status", "==", "pending")
-      .onSnapshot(snap => {
+    db.collection("matches").where("player2.uid", "==", currentUser.uid).where("status", "==", "pending")
+    .onSnapshot(snap => {
         snap.forEach(doc => {
             if (confirm(`${doc.data().player1.displayName} seni maça davet ediyor!`)) {
                 db.collection("matches").doc(doc.id).update({ status: "active" });
@@ -89,7 +75,6 @@ function davetleriDinle() {
     });
 }
 
-// --- OYUN SENKRONİZASYONU ---
 function maçaKatil(matchId) {
     currentMatchId = matchId;
     db.collection("onlineUsers").doc(currentUser.uid).update({ status: "oyunda" });
@@ -111,20 +96,31 @@ function maçaKatil(matchId) {
             if (openedIndices.includes(i) || matchedIndices.includes(i)) {
                 kartlar[i].classList.add('acik');
                 if (matchedIndices.includes(i)) kartlar[i].classList.add('eslesen');
-            } else { 
-                kartlar[i].classList.remove('acik'); 
-            }
+            } else { kartlar[i].classList.remove('acik'); }
         }
 
         const isPlayer1 = data.player1.uid === currentUser.uid;
         const siraBende = (isPlayer1 && data.currentPlayer === 1) || (!isPlayer1 && data.currentPlayer === 2);
         
+        // Skor ve İsim Güncelleme
+        document.getElementById('oyuncu1-ad').innerText = "Sen";
         document.getElementById('oyuncu1-skor').innerText = isPlayer1 ? data.scores.player1 : data.scores.player2;
         document.getElementById('oyuncu2-ad').innerText = isPlayer1 ? data.player2.displayName : data.player1.displayName;
         document.getElementById('oyuncu2-skor').innerText = isPlayer1 ? data.scores.player2 : data.scores.player1;
-        document.getElementById('sira-gosterge').innerText = siraBende ? "Sıra: SENDE" : "Sıra: RAKİPTE";
+        
+        // PARLAMA EFEKTİ KONTROLÜ
+        if (siraBende) {
+            document.getElementById('oyuncu1-kutu').classList.add('sira-bende');
+            document.getElementById('oyuncu2-kutu').classList.remove('sira-bende');
+            document.getElementById('sira-gosterge').innerText = "Sıra: SENDE";
+        } else {
+            document.getElementById('oyuncu2-kutu').classList.add('sira-bende');
+            document.getElementById('oyuncu1-kutu').classList.remove('sira-bende');
+            document.getElementById('sira-gosterge').innerText = "Sıra: RAKİPTE";
+        }
 
-        if (data.matchedCards && data.matchedCards.length === 16) {
+        // Bitiş Kontrolü (20 Kart)
+        if (data.matchedCards && data.matchedCards.length === 20) {
             const skorun = isPlayer1 ? data.scores.player1 : data.scores.player2;
             const rakipSkor = isPlayer1 ? data.scores.player2 : data.scores.player1;
             let sonuc = (skorun > rakipSkor) ? "yendin" : (skorun < rakipSkor ? "yenildin" : "berabere");
@@ -138,8 +134,7 @@ function createBoard(symbols) {
     oyunAlani.innerHTML = '';
     symbols.forEach((s, i) => {
         const card = document.createElement('div');
-        card.className = 'kart';
-        card.innerHTML = s;
+        card.className = 'kart'; card.innerHTML = s;
         card.onclick = () => handleCardClick(i, s);
         oyunAlani.appendChild(card);
     });
@@ -167,29 +162,19 @@ async function handleCardClick(index, symbol) {
             });
         } else {
             setTimeout(async () => {
-                await docRef.update({ 
-                    currentPlayer: data.currentPlayer === 1 ? 2 : 1, 
-                    openedCards: [] 
-                });
+                await docRef.update({ currentPlayer: data.currentPlayer === 1 ? 2 : 1, openedCards: [] });
             }, 1000);
         }
     }
 }
 
-// --- EFEKT VE BİTİŞ ---
 function oyunBitisiniGoster(sonuc) {
     const bitisDiv = document.createElement('div');
     bitisDiv.className = 'bitis-mesaji';
-    let emoji = ""; let mesaj = "";
-    if (sonuc === "yendin") {
-        emoji = "🏆"; mesaj = "TEBRİKLER, YENDİNİZ!";
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    } else if (sonuc === "yenildin") {
-        emoji = "😢"; mesaj = "YENİLDİNİZ...";
-    } else {
-        emoji = "😊"; mesaj = "BERABERE KALDINIZ";
-    }
-    bitisDiv.innerHTML = `<span class="bitis-emoji">${emoji}</span><div class="bitis-metin">${mesaj}</div><button onclick="location.reload()" class="btn btn-primary">Lobiye Dön</button>`;
+    let emoji = (sonuc === "yendin") ? "🏆" : (sonuc === "yenildin" ? "😢" : "😊");
+    let mesaj = (sonuc === "yendin") ? "TEBRİKLER!" : (sonuc === "yenildin" ? "YENİLDİNİZ" : "BERABERE");
+    if (sonuc === "yendin") confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    bitisDiv.innerHTML = `<span style="font-size:4rem">${emoji}</span><h2>${mesaj}</h2><button onclick="location.reload()" class="btn btn-primary">Lobiye Dön</button>`;
     document.body.appendChild(bitisDiv);
 }
 
