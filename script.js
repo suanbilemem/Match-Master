@@ -1,4 +1,3 @@
-// Firebase Ayarları (Senin bilgilerini korudum)
 const firebaseConfig = {
     apiKey: "AIzaSyCyMupvmvSTwriPzjtN1xfp36SaJ470Xjc",
     authDomain: "match-master-af628.firebaseapp.com",
@@ -22,20 +21,97 @@ function ekranDegistir(id) {
     document.getElementById(id).classList.add('aktif');
 }
 
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async (user) => {
     if (user) { 
         currentUser = user; 
         ekranDegistir('ana-menu'); 
-        document.getElementById('kullanici-bilgisi').innerText = `Selam, ${user.displayName}`; 
+        document.getElementById('kullanici-bilgisi').innerText = `Selam, ${user.displayName}`;
+        // Uygulama açıldığında online kaydını yap
+        await db.collection("onlineUsers").doc(user.uid).set({
+            name: user.displayName,
+            status: "lobi",
+            lastSeen: Date.now()
+        }, { merge: true });
     } else { ekranDegistir('login-ekrani'); }
 });
 
-// --- OYUN TAHTASI ---
+// --- LOBİ VE DAVET SİSTEMİ ---
+document.getElementById('lobi-btn').onclick = () => {
+    ekranDegistir('lobi-ekrani');
+    onlineOyunculariListele();
+    gelenDavetleriDinle();
+};
+
+function onlineOyunculariListele() {
+    db.collection("onlineUsers").where("status", "==", "lobi").onSnapshot(snapshot => {
+        const liste = document.getElementById('kullanici-listesi');
+        liste.innerHTML = "";
+        snapshot.forEach(doc => {
+            if (doc.id !== currentUser.uid) {
+                const user = doc.data();
+                const div = document.createElement('div');
+                div.style = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.1); padding:10px; margin-bottom:5px; border-radius:8px;";
+                div.innerHTML = `<span>${user.name}</span><button class="btn btn-primary" style="padding:5px 10px; font-size:12px;" onclick="davetEt('${doc.id}')">Davet Et</button>`;
+                liste.appendChild(div);
+            }
+        });
+        if (liste.innerHTML === "") liste.innerHTML = "<p>Şu an kimse yok...</p>";
+    });
+}
+
+async function davetEt(rakipId) {
+    const odaId = `oda_${currentUser.uid}_${rakipId}`;
+    await db.collection("lobbies").doc(odaId).set({
+        symbols: [...meyveler, ...meyveler].sort(() => Math.random() - 0.5),
+        playerNames: { [currentUser.uid]: currentUser.displayName },
+        scores: { [currentUser.uid]: 0 },
+        currentTurn: currentUser.uid,
+        status: "davet_bekliyor",
+        davetEdilen: rakipId,
+        davetEdenAd: currentUser.displayName
+    });
+    currentLobbyId = odaId;
+    alert("Davet gönderildi, rakip bekleniyor...");
+    odaDinle(odaId); // Davet eden de odayı dinlemeye başlar
+}
+
+function gelenDavetleriDinle() {
+    db.collection("lobbies")
+        .where("davetEdilen", "==", currentUser.uid)
+        .where("status", "==", "davet_bekliyor")
+        .onSnapshot(snapshot => {
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (confirm(`${data.davetEdenAd} seni oyuna çağırıyor! Katılmak ister misin?`)) {
+                    db.collection("lobbies").doc(doc.id).update({
+                        status: "aktif",
+                        [`playerNames.${currentUser.uid}`]: currentUser.displayName,
+                        [`scores.${currentUser.uid}`]: 0
+                    });
+                    currentLobbyId = doc.id;
+                    odaDinle(doc.id);
+                }
+            });
+        });
+}
+
+function odaDinle(odaId) {
+    if (lobbyUnsubscribe) lobbyUnsubscribe();
+    lobbyUnsubscribe = db.collection("lobbies").doc(odaId).onSnapshot(doc => {
+        const data = doc.data();
+        if (data && data.status === "aktif") {
+            gameState.mode = 'online';
+            ekranDegistir('oyun-ekrani');
+            createBoard(data.symbols);
+            // Burada online oyun mantığı devam eder...
+        }
+    });
+}
+
+// --- OYUN TAHTASI VE KARTLAR ---
 function createBoard(symbols) {
     const oyunAlani = document.getElementById('oyun-alani');
-    oyunAlani.innerHTML = ''; 
-    gameState.openCards = [];
-    gameState.boardLocked = false;
+    oyunAlani.innerHTML = '';
     symbols.forEach((s, i) => {
         const card = document.createElement('div');
         card.className = 'kart';
@@ -45,114 +121,44 @@ function createBoard(symbols) {
     });
 }
 
-// --- KART TIKLAMA ---
 function handleCardClick(index, symbol, cardElement) {
     if (gameState.boardLocked || cardElement.classList.contains('acik') || cardElement.classList.contains('eslesen')) return;
-
-    if (gameState.mode === 'local') {
-        cardElement.classList.add('acik');
-        gameState.openCards.push({index, symbol, cardElement});
-        if (gameState.openCards.length === 2) { 
-            gameState.boardLocked = true; 
-            setTimeout(checkMatchLocal, 1000); 
-        }
-    } else {
-        // Online modda sadece senin sıransa tıklayabilirsin
-        if (gameState.currentPlayerId !== currentUser.uid) return;
-        db.collection("lobbies").doc(currentLobbyId).update({ 
-            lastAction: { index, symbol, userId: currentUser.uid, time: Date.now() } 
-        });
+    
+    cardElement.classList.add('acik');
+    gameState.openCards.push({index, symbol, cardElement});
+    
+    if (gameState.openCards.length === 2) {
+        gameState.boardLocked = true;
+        setTimeout(checkMatch, 1000);
     }
 }
 
-// --- GEMINI (BOT) MANTIĞI ---
-function checkMatchLocal() {
+function checkMatch() {
     const [c1, c2] = gameState.openCards;
-    if (c1.symbol === c2.symbol) { 
-        c1.cardElement.classList.add('eslesen'); 
-        c2.cardElement.classList.add('eslesen'); 
+    if (c1.symbol === c2.symbol) {
+        c1.cardElement.classList.add('eslesen');
+        c2.cardElement.classList.add('eslesen');
         gameState.scores.p1++;
         document.getElementById('oyuncu1-skor').innerText = gameState.scores.p1;
         gameState.boardLocked = false;
-    } else { 
+    } else {
         setTimeout(() => {
-            c1.cardElement.classList.remove('acik'); 
+            c1.cardElement.classList.remove('acik');
             c2.cardElement.classList.remove('acik');
-            // Sırayı Gemini'ye devret
-            document.getElementById('sira-gosterge').innerText = "Sıra: Gemini";
-            setTimeout(geminiHamleYap, 1000);
+            gameState.boardLocked = false;
         }, 500);
     }
     gameState.openCards = [];
 }
 
-function geminiHamleYap() {
-    const kapaliKartlar = Array.from(document.getElementById('oyun-alani').children)
-                               .filter(k => !k.classList.contains('acik') && !k.classList.contains('eslesen'));
-    if (kapaliKartlar.length < 2) return;
-
-    const s1 = kapaliKartlar[Math.floor(Math.random() * kapaliKartlar.length)];
-    s1.classList.add('acik');
-
-    setTimeout(() => {
-        const kalanlar = kapaliKartlar.filter(k => k !== s1);
-        const s2 = kalanlar[Math.floor(Math.random() * kalanlar.length)];
-        s2.classList.add('acik');
-
-        setTimeout(() => {
-            if (s1.innerText === s2.innerText) {
-                s1.classList.add('eslesen'); s2.classList.add('eslesen');
-                gameState.scores.p2++;
-                document.getElementById('oyuncu2-skor').innerText = gameState.scores.p2;
-                setTimeout(geminiHamleYap, 1000);
-            } else {
-                s1.classList.remove('acik'); s2.classList.remove('acik');
-                document.getElementById('sira-gosterge').innerText = "Sıra: Sen";
-                gameState.boardLocked = false;
-            }
-        }, 1000);
-    }, 1000);
-}
-
-// --- ONLINE LOBİ SİSTEMİ (Gerçekçi Yapı) ---
-document.getElementById('lobi-btn').onclick = () => {
-    ekranDegistir('lobi-ekrani');
-    kullanicilariListele();
-};
-
-function kullanicilariListele() {
-    const listeAlani = document.getElementById('kullanici-listesi');
-    // Burada tüm online kullanıcıları çekip "Davet Et" butonu göstermelisin
-    // Şimdilik test için seni bir odaya beklemeye alıyoruz
-    listeAlani.innerHTML = "<p>Rakip aranıyor... (Oda oluşturuldu)</p>";
-    currentLobbyId = "oda_" + currentUser.uid;
-    
-    db.collection("lobbies").doc(currentLobbyId).set({
-        symbols: [...meyveler, ...meyveler].sort(() => Math.random() - 0.5),
-        playerNames: { [currentUser.uid]: currentUser.displayName },
-        scores: { [currentUser.uid]: 0 },
-        currentTurn: currentUser.uid,
-        status: "waiting"
-    });
-    
-    // Odaya birinin girmesini bekle
-    db.collection("lobbies").doc(currentLobbyId).onSnapshot(doc => {
-        if(Object.keys(doc.data().playerNames).length > 1) {
-            gameState.mode = 'online';
-            ekranDegistir('oyun-ekrani');
-            listenLobby(currentLobbyId);
-        }
-    });
-}
-
-// Diğer buton olayları
+// --- BUTONLAR ---
 document.getElementById('gemini-oyna-btn').onclick = () => {
     gameState.mode = 'local';
     gameState.scores = {p1:0, p2:0};
-    document.getElementById('oyuncu2-ad').innerText = "Gemini";
     ekranDegistir('oyun-ekrani');
     createBoard([...meyveler, ...meyveler].sort(() => Math.random() - 0.5));
 };
 
 document.getElementById('google-login-btn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-document.querySelectorAll('[id^="ana-ekran-btn-"]').forEach(btn => btn.onclick = () => location.reload());
+document.getElementById('ana-ekran-btn-2').onclick = () => location.reload();
+document.getElementById('ana-ekran-btn-3').onclick = () => location.reload();
