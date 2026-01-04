@@ -1,224 +1,106 @@
-/* GENEL AYARLAR */
-* { 
-    margin: 0; 
-    padding: 0; 
-    box-sizing: border-box; 
-}
-
-body { 
-    /* Sevdiğin eski gradyan renklerin */
-    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); 
-    color: white; 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-    min-height: 100vh; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    overflow: hidden; /* Sayfanın aşağı kaymasını engeller */
-}
-
-/* EKRAN YÖNETİMİ */
-.ekran { 
-    display: none; 
-    width: 100%; 
-    height: 100vh; 
-    flex-direction: column; 
-    align-items: center; 
-    justify-content: center; 
-    padding: 10px; 
-}
-
-.ekran.aktif { 
-    display: flex; 
-}
-
-/* LOBİ VE MENÜ KONTEYNERLARI */
-.login-container, .menu-container { 
-    background: rgba(0, 0, 0, 0.7); 
-    backdrop-filter: blur(10px); 
-    padding: 30px; 
-    border-radius: 20px; 
-    text-align: center; 
-    width: 90%; 
-    max-width: 350px; 
-}
-
-/* SKOR ALANI VE PARLAMA EFEKTİ */
-.skor-alani { 
-    display: flex; 
-    width: 100%; 
-    max-width: 380px; 
-    gap: 10px; 
-    margin-bottom: 10px; 
-}
-
-.skor-kart { 
-    flex: 1; 
-    background: rgba(255,255,255,0.15); 
-    padding: 10px; 
-    border-radius: 12px; 
-    text-align: center; 
-    border: 2px solid transparent; 
-    transition: all 0.3s ease;
-}
-
-.skor-sayi { 
-    font-size: 1.2rem; 
-    font-weight: bold; 
-    display: block;
-}
-
-/* SIRA KİMDEYSE O TARAF PARLASIN */
-.sira-bende { 
-    border-color: #fdbb2d; 
-    background: rgba(253, 187, 45, 0.3) !important;
-    box-shadow: 0 0 15px #fdbb2d;
-    transform: scale(1.03);
-}
-
-/* OYUN ALANI (4x5 GRID) */
-.oyun-alani { 
-    display: grid; 
-    grid-template-columns: repeat(4, 1fr); /* Yan yana 4 kart */
-    gap: 8px; 
-    margin: 10px 0; 
-    width: 100%; 
-    max-width: 360px;
-}
-
-.kart { 
-    aspect-ratio: 1/1; /* Kartları kare yapar, ekrana sığdırır */
-    background: white; 
-    border-radius: 10px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    cursor: pointer; 
-    position: relative; 
-    font-size: 1.8rem; /* Emoji boyutu */
-    transition: transform 0.3s;
-}
-
-.kart::after { 
-    content: '?'; 
-    position: absolute; 
-    background: #333; 
-    width: 100%; 
-    height: 100%; 
-    border-radius: 10px; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
+/* Genel Ayarlar */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     color: white;
 }
 
-.kart.acik::after, .kart.eslesen::after { 
-    opacity: 0; 
-    transform: rotateY(180deg); 
+.app-wrapper {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 30px;
+    border-radius: 20px;
+    width: 350px;
+    text-align: center;
+    min-height: 450px;
+    position: relative;
 }
 
-.kart.eslesen { 
-    background: #38ef7d; 
-    box-shadow: 0 0 10px #38ef7d; 
+/* Dropdown Tasarımı */
+.dropdown {
+    position: relative;
+    margin: 20px 0;
 }
 
-/* BİTİŞ EKRANI (OVERLAY - TAM ORTADA) */
-.bitis-mesaji {
-    position: fixed; /* Ekranın neresinde olursan ol sabit kalır */
-    top: 50%; 
-    left: 50%; 
-    transform: translate(-50%, -50%); /* Tam merkezleme */
-    background: rgba(0, 0, 0, 0.95); 
-    padding: 30px; 
-    border-radius: 25px; 
-    text-align: center; 
-    z-index: 10000; /* Her şeyin en üstünde */
-    border: 3px solid #fdbb2d;
-    width: 85%;
-    max-width: 300px;
-    box-shadow: 0 0 100px rgba(0,0,0,0.9);
+.main-btn {
+    background-color: #f39c12;
+    border: none;
+    padding: 12px 40px;
+    color: white;
+    font-size: 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
 }
 
-/* BUTONLAR */
-.btn { 
-    padding: 12px; 
-    border-radius: 10px; 
-    border: none; 
-    cursor: pointer; 
-    font-weight: bold; 
-    width: 100%; 
-    margin-top: 10px;
-    font-size: 1rem;
+.dropdown-content {
+    display: none;
+    background-color: white;
+    border-radius: 8px;
+    margin-top: 5px;
+    overflow: hidden;
+    flex-direction: column;
 }
 
-.btn-primary { 
-    background: white; 
-    color: #b21f1f; 
+.dropdown-content button {
+    background: none;
+    border: none;
+    padding: 12px;
+    color: #333;
+    font-size: 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
 }
 
-.btn-secondary { 
-    background: rgba(255,255,255,0.2); 
-    color: white; 
+.dropdown-content button:hover { background-color: #f1f1f1; }
+.show { display: flex !important; }
+
+/* Sade Liste Tasarımı */
+.sade-liste {
+    text-align: left;
+    margin-top: 15px;
 }
 
-/* LOBİ LİSTESİ */
-.liste-alani { 
-    background: rgba(255, 255, 255, 0.1); 
-    border-radius: 12px; 
-    margin: 15px 0; 
-    padding: 10px; 
-    max-height: 200px; 
-    overflow-y: auto; 
+.player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-.kullanici-item { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    padding: 8px; 
-    border-bottom: 1px solid rgba(255,255,255,0.1); 
+.play-btn {
+    background-color: white;
+    color: black;
+    border: none;
+    padding: 5px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
 }
 
-.btn-davet { 
-    background: #38ef7d; 
-    color: #111; 
-    padding: 5px 12px; 
-    border-radius: 6px; 
-    border: none; 
-    cursor: pointer; 
-    font-weight: bold;
-}
-/* Tema Seçim Alanı */
-.tema-secici { 
-    display: flex; 
-    gap: 5px; 
-    margin-bottom: 15px; 
-    width: 100%; 
+/* Sabit Alt Bar */
+.fixed-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0,0,0,0.6);
+    padding: 15px 0;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
 }
 
-.btn-tema { 
-    flex: 1; 
-    padding: 10px 5px; 
-    border-radius: 8px; 
-    border: 2px solid rgba(255,255,255,0.2); 
-    background: rgba(0,0,0,0.3); 
-    color: white; 
-    cursor: pointer; 
-    font-size: 0.8rem; 
-    transition: 0.3s;
-}
-
-.btn-tema.aktif { 
-    border-color: #fdbb2d; 
-    background: #fdbb2d; 
-    color: black; 
-    font-weight: bold; 
-}
-
-/* Kart İçindeki Resimlerin (Minecraft/Sprunki) Ayarı */
-.kart img {
-    width: 85%;
-    height: 85%;
-    object-fit: contain;
-    pointer-events: none;
+.footer-btn {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
 }

@@ -3,62 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match Master Online</title>
+    <title>Match Master - Tema Seçimi</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
-    <div id="login-ekrani" class="ekran aktif">
-        <div class="login-container">
-            <h1>Match Master</h1>
-            <p>Eğlenceye Hazır Mısın?</p>
-            <button id="google-login-btn" class="btn btn-primary">Google ile Giriş Yap</button>
+    <div class="app-wrapper">
+        <div id="home-screen" class="screen">
+            <h1>Merhaba, KEREM GÖNEÇ</h1>
+            <p class="subtitle">Tema Seç</p>
+
+            <div class="dropdown">
+                <button id="theme-btn" class="main-btn" onclick="toggleDropdown()">Temalar</button>
+                <div id="dropdown-menu" class="dropdown-content">
+                    <button onclick="enterLobby('Meyveler')">Meyveler</button>
+                    <button onclick="enterLobby('Sprunki')">Sprunki</button>
+                    <button onclick="enterLobby('Minecraft')">Minecraft</button>
+                </div>
+            </div>
+
+            <button class="logout-btn">Çıkış Yap</button>
+        </div>
+
+        <div id="lobby-screen" class="screen" style="display: none;">
+            <h2 id="lobby-title">Lobi</h2>
+            <div class="online-box">
+                <p class="box-title">Çevrimiçi Oyuncular</p>
+                <div id="player-list" class="sade-liste">
+                    </div>
+            </div>
+
+            <div class="fixed-footer">
+                <button class="footer-btn" onclick="goHome()">Ana Ekran</button>
+            </div>
         </div>
     </div>
 
-    <div id="lobi-ekrani" class="ekran">
-        <div class="menu-container">
-            <h2 id="kullanici-bilgisi">Merhaba!</h2>
-            <p style="font-size: 0.9rem; opacity: 0.8; margin-bottom: 15px;">Bir tema seç ve rakibini davet et</p>
-            
-            <div class="tema-secici">
-                <button onclick="temaAyarla('meyveler')" id="btn-meyve" class="btn-tema aktif">🍎 Meyve</button>
-                <button onclick="temaAyarla('minecraft')" id="btn-mine" class="btn-tema">⛏️ Mine</button>
-                <button onclick="temaAyarla('sprunki')" id="btn-sprun" class="btn-tema">🎵 Sprun</button>
-            </div>
-
-            <div class="liste-alani">
-                <h3>Çevrimiçi Oyuncular</h3>
-                <div id="kullanici-listesi"></div>
-            </div>
-            <button id="oyundan-cik-btn" class="btn btn-secondary">Çıkış Yap</button>
-        </div>
-    </div>
-
-    <div id="oyun-ekrani" class="ekran">
-        <div class="skor-alani">
-            <div id="oyuncu1-kutu" class="skor-kart">
-                <div id="oyuncu1-ad">Oyuncu 1</div>
-                <div id="oyuncu1-skor" class="skor-sayi">0</div>
-            </div>
-            <div id="oyuncu2-kutu" class="skor-kart">
-                <div id="oyuncu2-ad">Oyuncu 2</div>
-                <div id="oyuncu2-skor" class="skor-sayi">0</div>
-            </div>
-        </div>
-        
-        <div id="sira-gosterge" style="margin-bottom: 10px; font-weight: bold; color: #fdbb2d;">Sıra Bekleniyor...</div>
-        
-        <div id="oyun-alani" class="oyun-alani">
-            </div>
-        
-        <button id="ana-ekran-btn" class="btn btn-secondary" onclick="location.reload()">Lobiye Dön</button>
-    </div>
-
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
