@@ -1,123 +1,243 @@
 /* GENEL AYARLAR */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-    color: white;
+body { 
+    /* Sevdiğin eski gradyan renklerin */
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); 
+    color: white; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    min-height: 100vh; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    overflow: hidden; /* Sayfanın aşağı kaymasını engeller */
 }
 
 /* EKRAN YÖNETİMİ */
-.ekran {
-    display: none;
-    width: 100%;
-    max-width: 420px;
-    padding: 25px;
+.ekran { 
+    display: none; 
+    width: 100%; 
+    height: 100vh; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    padding: 10px; 
 }
 
-.ekran.aktif {
+.ekran.aktif { 
+    display: flex; 
+}
+
+/* LOBİ VE MENÜ KONTEYNERLARI */
+.login-container, .menu-container { 
+    background: rgba(0, 0, 0, 0.7); 
+    backdrop-filter: blur(10px); 
+    padding: 30px; 
+    border-radius: 20px; 
+    text-align: center; 
+    width: 90%; 
+    max-width: 350px; 
+}
+
+/* SKOR ALANI VE PARLAMA EFEKTİ */
+.skor-alani { 
+    display: flex; 
+    width: 100%; 
+    max-width: 380px; 
+    gap: 10px; 
+    margin-bottom: 10px; 
+}
+
+.skor-kart { 
+    flex: 1; 
+    background: rgba(255,255,255,0.15); 
+    padding: 10px; 
+    border-radius: 12px; 
+    text-align: center; 
+    border: 2px solid transparent; 
+    transition: all 0.3s ease;
+}
+
+.skor-sayi { 
+    font-size: 1.2rem; 
+    font-weight: bold; 
     display: block;
-    animation: fadeIn 0.6s ease-out;
 }
 
-/* KONTEYNER TASARIMI */
-.menu-container, .login-container {
-    background: rgba(0, 0, 0, 0.5);
-    padding: 40px 30px;
-    border-radius: 25px;
-    text-align: center;
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+/* SIRA KİMDEYSE O TARAF PARLASIN */
+.sira-bende { 
+    border-color: #fdbb2d; 
+    background: rgba(253, 187, 45, 0.3) !important;
+    box-shadow: 0 0 15px #fdbb2d;
+    transform: scale(1.03);
+}
+
+/* OYUN ALANI (4x5 GRID) */
+.oyun-alani { 
+    display: grid; 
+    grid-template-columns: repeat(4, 1fr); /* Yan yana 4 kart */
+    gap: 8px; 
+    margin: 10px 0; 
+    width: 100%; 
+    max-width: 360px;
+}
+
+.kart { 
+    aspect-ratio: 1/1; /* Kartları kare yapar, ekrana sığdırır */
+    background: white; 
+    border-radius: 10px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    cursor: pointer; 
+    position: relative; 
+    font-size: 1.8rem; /* Emoji boyutu */
+    transition: transform 0.3s;
+}
+
+.kart::after { 
+    content: '?'; 
+    position: absolute; 
+    background: #333; 
+    width: 100%; 
+    height: 100%; 
+    border-radius: 10px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    color: white;
+}
+
+.kart.acik::after, .kart.eslesen::after { 
+    opacity: 0; 
+    transform: rotateY(180deg); 
+}
+
+.kart.eslesen { 
+    background: #38ef7d; 
+    box-shadow: 0 0 10px #38ef7d; 
+}
+
+/* BİTİŞ EKRANI (OVERLAY - TAM ORTADA) */
+.bitis-mesaji {
+    position: fixed; /* Ekranın neresinde olursan ol sabit kalır */
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); /* Tam merkezleme */
+    background: rgba(0, 0, 0, 0.95); 
+    padding: 30px; 
+    border-radius: 25px; 
+    text-align: center; 
+    z-index: 10000; /* Her şeyin en üstünde */
+    border: 3px solid #fdbb2d;
+    width: 85%;
+    max-width: 300px;
+    box-shadow: 0 0 100px rgba(0,0,0,0.9);
 }
 
 /* BUTONLAR */
-.btn {
-    padding: 14px 22px;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    font-weight: bold;
+.btn { 
+    padding: 12px; 
+    border-radius: 10px; 
+    border: none; 
+    cursor: pointer; 
+    font-weight: bold; 
+    width: 100%; 
+    margin-top: 10px;
     font-size: 1rem;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    margin: 8px 0;
-    display: block;
-    width: 100%;
 }
 
-.btn-primary { background: #3498db; color: white; box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3); }
-.btn-secondary { background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid rgba(255, 255, 255, 0.2); }
-.btn-danger { background: #e74c3c; color: white; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3); }
-
-.btn:hover {
-    transform: translateY(-3px);
-    filter: brightness(1.2);
+.btn-primary { 
+    background: white; 
+    color: #b21f1f; 
 }
 
-/* TEMA BUTONLARI (image_d1cd88) */
+.btn-secondary { 
+    background: rgba(255,255,255,0.2); 
+    color: white; 
+}
+
+/* LOBİ LİSTESİ */
+.liste-alani { 
+    background: rgba(255, 255, 255, 0.1); 
+    border-radius: 12px; 
+    margin: 15px 0; 
+    padding: 10px; 
+    max-height: 200px; 
+    overflow-y: auto; 
+}
+
+.kullanici-item { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 8px; 
+    border-bottom: 1px solid rgba(255,255,255,0.1); 
+}
+
+.btn-davet { 
+    background: #38ef7d; 
+    color: #111; 
+    padding: 5px 12px; 
+    border-radius: 6px; 
+    border: none; 
+    cursor: pointer; 
+    font-weight: bold;
+}
+/* Mevcut CSS kodlarının altına ekle */
+
 .tema-butonlar {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin: 20px 0;
-}
-
-/* OYUN ALANI */
-.oyun-alani {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
-    margin-top: 20px;
+    width: 100%;
+    padding: 10px 0;
 }
 
-/* KART TASARIMI */
-.kart {
-    aspect-ratio: 1;
-    background: #2ecc71;
-    border-radius: 12px;
+#tema-selam {
+    color: #fdbb2d;
+    margin-bottom: 5px;
+    text-shadow: 0 0 10px rgba(253, 187, 45, 0.5);
+}
+
+/* Mevcut buton tasarımlarınla uyumlu */
+.tema-butonlar .btn-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.tema-butonlar .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+/* Mevcut CSS'inin sonuna ekle */
+.tema-butonlar {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.tema-butonlar .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 1.1rem;
+}
+
+.tema-butonlar .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.02);
 }
 
 .kart img {
     width: 85%;
     height: 85%;
     object-fit: contain;
-    display: none;
     pointer-events: none;
     filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.3));
-    /* Pixel netliği için (Minecraft'ta da işe yarar) */
-    image-rendering: pixelated; 
 }
-
-.kart.acik img { display: block; }
-.kart.acik { background: #fff; transform: rotateY(180deg); }
-.kart.eslesen { visibility: hidden; opacity: 0; }
-
-/* SKOR VE SIRA (image_c6dc83) */
-.skor-alani { display: flex; justify-content: space-between; margin-bottom: 20px; }
-.skor-kart { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; width: 48%; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
-.skor-sayi { font-size: 1.8rem; font-weight: bold; margin-top: 5px; color: #f1c40f; }
-#sira-gosterge { text-align: center; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; color: #bdc3c7; }
-
-/* LOBİ LİSTESİ (image_d1d0b1) */
-.liste-alani { background: rgba(255,255,255,0.05); border-radius: 15px; padding: 15px; max-height: 250px; overflow-y: auto; margin-bottom: 20px; }
-.kullanici-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.kullanici-item:last-child { border-bottom: none; }
-
-/* ANİMASYONLAR */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
