@@ -215,3 +215,29 @@ body {
     background: rgba(255, 255, 255, 0.3);
     transform: translateY(-2px);
 }
+/* Mevcut CSS'inin sonuna ekle */
+.tema-butonlar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.tema-butonlar .btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 1.1rem;
+}
+
+.tema-butonlar .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.02);
+}
+
+.kart img {
+    width: 85%;
+    height: 85%;
+    object-fit: contain;
+    pointer-events: none;
+    filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.3));
+}

@@ -15,12 +15,22 @@ const auth = firebase.auth();
 let currentUser = null, currentMatchId = null, matchUnsubscribe = null;
 let secilenTema = "Meyveler";
 
-// --- TEMALAR ---
 const temalar = {
     'Meyveler': ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑', '🥝', '🥥'],
     'Araçlar': ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐'],
-    'Minecraft': ['🧱', '⛏️', '🗡️', '🛡️', '🍖', '💎', '🌿', '🏹', '📦', '🧟'],
-    'Sprunki': ['🎵', '🎶', '🎧', '🎤', '🎹', '🎸', '🎷', '🎺', '🎻', '🥁']
+    'Minecraft': ['💎', '🗡️', '⛏️', '🧱', '🍖', '🏹', '🛡️', '🧟', '🧨', '📦'],
+    'Pokémon': [
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/4.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/7.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/39.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/52.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/54.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/143.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/133.png',
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png'
+    ]
 };
 
 function ekranDegistir(id) {
@@ -28,56 +38,39 @@ function ekranDegistir(id) {
     document.getElementById(id).classList.add('aktif');
 }
 
-// --- 1. ADIM: GİRİŞ KONTROLÜ ---
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
         document.getElementById('tema-selam').innerText = `Selam, ${user.displayName.toUpperCase()}`;
-        ekranDegistir('tema-ekrani'); // Girişten sonra direkt TEMA ekranına
-    } else { 
-        ekranDegistir('login-ekrani'); 
+        ekranDegistir('tema-ekrani');
+    } else {
+        ekranDegistir('login-ekrani');
     }
 });
 
-// --- 2. ADIM: TEMA SEÇİMİ VE LOBİYE KAYIT ---
 function temaSec(tema) {
     secilenTema = tema;
-    document.getElementById('kullanici-bilgisi').innerText = `Selam, ${currentUser.displayName}`;
-    
-    // Firebase'e temasıyla birlikte kaydet
     db.collection("onlineUsers").doc(currentUser.uid).set({ 
         displayName: currentUser.displayName, 
         status: "lobi", 
         uid: currentUser.uid,
         selectedTheme: tema 
     });
-
     lobiDinle();
     davetleriDinle();
     ekranDegistir('lobi-ekrani');
 }
 
-// --- 3. ADIM: LOBİ VE DAVETLER ---
 function lobiDinle() {
     db.collection("onlineUsers").where("status", "==", "lobi").onSnapshot(snap => {
         const liste = document.getElementById('kullanici-listesi');
         liste.innerHTML = "";
-        
-        // Gemini Bot Seçeneği
-        const botDiv = document.createElement('div');
-        botDiv.className = "kullanici-item";
-        botDiv.style.background = "rgba(243, 156, 18, 0.1)";
-        botDiv.innerHTML = `<span>🤖 Gemini (Bot)</span><button onclick="alert('Bot maçı hazırlanıyor!')" class="btn-davet">Oyna</button>`;
-        liste.appendChild(botDiv);
-
         snap.forEach(doc => {
             if (doc.id !== currentUser.uid) {
                 const div = document.createElement('div');
                 div.className = "kullanici-item";
-                div.innerHTML = `
-                    <span>${doc.data().displayName} (${doc.data().selectedTheme})</span>
-                    <button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-davet">Oyna</button>
-                `;
+                div.innerHTML = `<span>${doc.data().displayName} (${doc.data().selectedTheme})</span>
+                                 <button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-davet">Oyna</button>`;
                 liste.appendChild(div);
             }
         });
@@ -86,7 +79,7 @@ function lobiDinle() {
 
 async function davetEt(rakipId, rakipAd) {
     const matchId = `match_${Date.now()}`;
-    const semboller = temalar[secilenTema]; // Seçilen temayı kullan
+    const semboller = temalar[secilenTema];
     await db.collection("matches").doc(matchId).set({
         gameId: matchId,
         symbols: [...semboller, ...semboller].sort(() => Math.random() - 0.5),
@@ -113,21 +106,17 @@ function davetleriDinle() {
     });
 }
 
-// --- 4. ADIM: OYUN MOTORU (196 SATIRA TAMAMLAYAN KISIM) ---
 function maçaKatil(matchId) {
     currentMatchId = matchId;
     db.collection("onlineUsers").doc(currentUser.uid).update({ status: "oyunda" });
     ekranDegistir('oyun-ekrani');
-    
     if (matchUnsubscribe) matchUnsubscribe();
     matchUnsubscribe = db.collection("matches").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
         if (!data) return;
+        if (document.getElementById('oyun-alani').children.length === 0) createBoard(data.symbols);
         
-        const oyunAlani = document.getElementById('oyun-alani');
-        if (oyunAlani.children.length === 0) createBoard(data.symbols);
-
-        const kartlar = oyunAlani.getElementsByClassName('kart');
+        const kartlar = document.getElementsByClassName('kart');
         const openedIndices = (data.openedCards || []).map(c => c.index);
         const matchedIndices = data.matchedCards || [];
 
@@ -138,30 +127,15 @@ function maçaKatil(matchId) {
             } else { kartlar[i].classList.remove('acik'); }
         }
 
-        const isPlayer1 = data.player1.uid === currentUser.uid;
-        const siraBende = (isPlayer1 && data.currentPlayer === 1) || (!isPlayer1 && data.currentPlayer === 2);
+        const isP1 = data.player1.uid === currentUser.uid;
+        document.getElementById('oyuncu1-skor').innerText = isP1 ? data.scores.player1 : data.scores.player2;
+        document.getElementById('oyuncu2-skor').innerText = isP1 ? data.scores.player2 : data.scores.player1;
+        document.getElementById('oyuncu2-ad').innerText = isP1 ? data.player2.displayName : data.player1.displayName;
         
-        document.getElementById('oyuncu1-ad').innerText = "Sen";
-        document.getElementById('oyuncu1-skor').innerText = isPlayer1 ? data.scores.player1 : data.scores.player2;
-        document.getElementById('oyuncu2-ad').innerText = isPlayer1 ? data.player2.displayName : data.player1.displayName;
-        document.getElementById('oyuncu2-skor').innerText = isPlayer1 ? data.scores.player2 : data.scores.player1;
-        
-        if (siraBende) {
-            document.getElementById('oyuncu1-kutu').classList.add('sira-bende');
-            document.getElementById('oyuncu2-kutu').classList.remove('sira-bende');
-            document.getElementById('sira-gosterge').innerText = "Sıra: SENDE";
-        } else {
-            document.getElementById('oyuncu2-kutu').classList.add('sira-bende');
-            document.getElementById('oyuncu1-kutu').classList.remove('sira-bende');
-            document.getElementById('sira-gosterge').innerText = "Sıra: RAKİPTE";
-        }
+        const siraBende = (isP1 && data.currentPlayer === 1) || (!isP1 && data.currentPlayer === 2);
+        document.getElementById('sira-gosterge').innerText = siraBende ? "Sıra: SENDE" : "Sıra: RAKİPTE";
 
-        if (data.matchedCards && data.matchedCards.length === 20) {
-            const skorun = isPlayer1 ? data.scores.player1 : data.scores.player2;
-            const rakipSkor = isPlayer1 ? data.scores.player2 : data.scores.player1;
-            let sonuc = (skorun > rakipSkor) ? "yendin" : (skorun < rakipSkor ? "yenildin" : "berabere");
-            if (!document.querySelector('.bitis-mesaji')) oyunBitisiniGoster(sonuc);
-        }
+        if (data.matchedCards.length === 20) oyunBitisiniGoster(isP1, data.scores);
     });
 }
 
@@ -170,7 +144,12 @@ function createBoard(symbols) {
     oyunAlani.innerHTML = '';
     symbols.forEach((s, i) => {
         const card = document.createElement('div');
-        card.className = 'kart'; card.innerHTML = s;
+        card.className = 'kart';
+        if (s.startsWith('http')) {
+            card.innerHTML = `<img src="${s}">`;
+        } else {
+            card.innerHTML = s;
+        }
         card.onclick = () => handleCardClick(i, s);
         oyunAlani.appendChild(card);
     });
@@ -179,44 +158,42 @@ function createBoard(symbols) {
 async function handleCardClick(index, symbol) {
     const docRef = db.collection("matches").doc(currentMatchId);
     const data = (await docRef.get()).data();
-    const isPlayer1 = data.player1.uid === currentUser.uid;
-    const siraBende = (isPlayer1 && data.currentPlayer === 1) || (!isPlayer1 && data.currentPlayer === 2);
+    const isP1 = data.player1.uid === currentUser.uid;
+    const siraBende = (isP1 && data.currentPlayer === 1) || (!isP1 && data.currentPlayer === 2);
 
-    if (!siraBende || (data.openedCards || []).length >= 2 || data.matchedCards.includes(index)) return;
+    if (!siraBende || data.openedCards.length >= 2 || data.matchedCards.includes(index)) return;
 
-    const newOpened = [...(data.openedCards || []), { index, symbol }];
+    const newOpened = [...data.openedCards, { index, symbol }];
     await docRef.update({ openedCards: newOpened });
 
     if (newOpened.length === 2) {
-        const [c1, c2] = newOpened;
-        if (c1.symbol === c2.symbol) {
-            const playerKey = isPlayer1 ? "player1" : "player2";
+        if (newOpened[0].symbol === newOpened[1].symbol) {
+            const pKey = isP1 ? "player1" : "player2";
             await docRef.update({
-                [`scores.${playerKey}`]: data.scores[playerKey] + 1,
-                matchedCards: [...(data.matchedCards || []), c1.index, c2.index],
+                [`scores.${pKey}`]: data.scores[pKey] + 1,
+                matchedCards: [...data.matchedCards, newOpened[0].index, newOpened[1].index],
                 openedCards: []
             });
         } else {
-            setTimeout(async () => {
-                await docRef.update({ currentPlayer: data.currentPlayer === 1 ? 2 : 1, openedCards: [] });
-            }, 1000);
+            setTimeout(() => docRef.update({ currentPlayer: data.currentPlayer === 1 ? 2 : 1, openedCards: [] }), 1000);
         }
     }
 }
 
-function oyunBitisiniGoster(sonuc) {
+function oyunBitisiniGoster(isP1, scores) {
     if (document.querySelector('.bitis-mesaji')) return;
+    const skorun = isP1 ? scores.player1 : scores.player2;
+    const rakipSkor = isP1 ? scores.player2 : scores.player1;
+    
     const bitisDiv = document.createElement('div');
-    bitisDiv.className = 'bitis-mesaji'; // CSS'teki o tam orta ekran
+    bitisDiv.className = 'bitis-mesaji'; 
     
-    let emoji = (sonuc === "yendin") ? "🏆" : (sonuc === "yenildin" ? "😢" : "😊");
-    let mesaj = (sonuc === "yendin") ? "TEBRİKLER!" : (sonuc === "yenildin" ? "YENİLDİNİZ" : "BERABERE");
-    
-    if (sonuc === "yendin") confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    let durum = (skorun > rakipSkor) ? "YENDİN! 🏆" : (skorun < rakipSkor ? "YENİLDİN 😢" : "BERABERE 😊");
+    if (skorun > rakipSkor) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
 
     bitisDiv.innerHTML = `
-        <div style="font-size: 5rem; margin-bottom: 10px;">${emoji}</div>
-        <h2 style="color: white; margin-bottom: 20px;">${mesaj}</h2>
+        <h2 style="color: white; font-size: 2rem;">${durum}</h2>
+        <p style="color: #eee; margin: 10px 0;">Sen: ${skorun} - Rakip: ${rakipSkor}</p>
         <button onclick="location.reload()" class="btn btn-primary" style="width: 100%;">Lobiye Dön</button>
     `;
     document.body.appendChild(bitisDiv);
