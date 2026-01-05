@@ -13,34 +13,71 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 
 let currentUser = null, currentMatchId = null, matchUnsubscribe = null;
-// 10 Çeşit Meyve (Toplam 20 Kart)
-const meyveler = ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑', '🥝', '🥥'];
+let secilenTema = "Meyveler";
+
+// --- TEMALAR ---
+const temalar = {
+    'Meyveler': ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑', '🥝', '🥥'],
+    'Araçlar': ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐'],
+    'Minecraft': ['🧱', '⛏️', '🗡️', '🛡️', '🍖', '💎', '🌿', '🏹', '📦', '🧟'],
+    'Sprunki': ['🎵', '🎶', '🎧', '🎤', '🎹', '🎸', '🎷', '🎺', '🎻', '🥁']
+};
 
 function ekranDegistir(id) {
     document.querySelectorAll('.ekran').forEach(e => e.classList.remove('aktif'));
     document.getElementById(id).classList.add('aktif');
 }
 
+// --- 1. ADIM: GİRİŞ KONTROLÜ ---
 auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
-        document.getElementById('kullanici-bilgisi').innerText = `Selam, ${user.displayName}`;
-        ekranDegistir('lobi-ekrani');
-        db.collection("onlineUsers").doc(user.uid).set({ displayName: user.displayName, status: "lobi", uid: user.uid });
-        lobiDinle();
-        davetleriDinle();
-    } else { ekranDegistir('login-ekrani'); }
+        document.getElementById('tema-selam').innerText = `Selam, ${user.displayName.toUpperCase()}`;
+        ekranDegistir('tema-ekrani'); // Girişten sonra direkt TEMA ekranına
+    } else { 
+        ekranDegistir('login-ekrani'); 
+    }
 });
 
+// --- 2. ADIM: TEMA SEÇİMİ VE LOBİYE KAYIT ---
+function temaSec(tema) {
+    secilenTema = tema;
+    document.getElementById('kullanici-bilgisi').innerText = `Selam, ${currentUser.displayName}`;
+    
+    // Firebase'e temasıyla birlikte kaydet
+    db.collection("onlineUsers").doc(currentUser.uid).set({ 
+        displayName: currentUser.displayName, 
+        status: "lobi", 
+        uid: currentUser.uid,
+        selectedTheme: tema 
+    });
+
+    lobiDinle();
+    davetleriDinle();
+    ekranDegistir('lobi-ekrani');
+}
+
+// --- 3. ADIM: LOBİ VE DAVETLER ---
 function lobiDinle() {
     db.collection("onlineUsers").where("status", "==", "lobi").onSnapshot(snap => {
         const liste = document.getElementById('kullanici-listesi');
         liste.innerHTML = "";
+        
+        // Gemini Bot Seçeneği
+        const botDiv = document.createElement('div');
+        botDiv.className = "kullanici-item";
+        botDiv.style.background = "rgba(243, 156, 18, 0.1)";
+        botDiv.innerHTML = `<span>🤖 Gemini (Bot)</span><button onclick="alert('Bot maçı hazırlanıyor!')" class="btn-davet">Oyna</button>`;
+        liste.appendChild(botDiv);
+
         snap.forEach(doc => {
             if (doc.id !== currentUser.uid) {
                 const div = document.createElement('div');
                 div.className = "kullanici-item";
-                div.innerHTML = `<span>${doc.data().displayName}</span><button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-davet">Oyna</button>`;
+                div.innerHTML = `
+                    <span>${doc.data().displayName} (${doc.data().selectedTheme})</span>
+                    <button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-davet">Oyna</button>
+                `;
                 liste.appendChild(div);
             }
         });
@@ -49,9 +86,10 @@ function lobiDinle() {
 
 async function davetEt(rakipId, rakipAd) {
     const matchId = `match_${Date.now()}`;
+    const semboller = temalar[secilenTema]; // Seçilen temayı kullan
     await db.collection("matches").doc(matchId).set({
         gameId: matchId,
-        symbols: [...meyveler, ...meyveler].sort(() => Math.random() - 0.5),
+        symbols: [...semboller, ...semboller].sort(() => Math.random() - 0.5),
         player1: { uid: currentUser.uid, displayName: currentUser.displayName },
         player2: { uid: rakipId, displayName: rakipAd },
         scores: { player1: 0, player2: 0 },
@@ -75,6 +113,7 @@ function davetleriDinle() {
     });
 }
 
+// --- 4. ADIM: OYUN MOTORU (196 SATIRA TAMAMLAYAN KISIM) ---
 function maçaKatil(matchId) {
     currentMatchId = matchId;
     db.collection("onlineUsers").doc(currentUser.uid).update({ status: "oyunda" });
@@ -102,13 +141,11 @@ function maçaKatil(matchId) {
         const isPlayer1 = data.player1.uid === currentUser.uid;
         const siraBende = (isPlayer1 && data.currentPlayer === 1) || (!isPlayer1 && data.currentPlayer === 2);
         
-        // Skor ve İsim Güncelleme
         document.getElementById('oyuncu1-ad').innerText = "Sen";
         document.getElementById('oyuncu1-skor').innerText = isPlayer1 ? data.scores.player1 : data.scores.player2;
         document.getElementById('oyuncu2-ad').innerText = isPlayer1 ? data.player2.displayName : data.player1.displayName;
         document.getElementById('oyuncu2-skor').innerText = isPlayer1 ? data.scores.player2 : data.scores.player1;
         
-        // PARLAMA EFEKTİ KONTROLÜ
         if (siraBende) {
             document.getElementById('oyuncu1-kutu').classList.add('sira-bende');
             document.getElementById('oyuncu2-kutu').classList.remove('sira-bende');
@@ -119,7 +156,6 @@ function maçaKatil(matchId) {
             document.getElementById('sira-gosterge').innerText = "Sıra: RAKİPTE";
         }
 
-        // Bitiş Kontrolü (20 Kart)
         if (data.matchedCards && data.matchedCards.length === 20) {
             const skorun = isPlayer1 ? data.scores.player1 : data.scores.player2;
             const rakipSkor = isPlayer1 ? data.scores.player2 : data.scores.player1;
@@ -169,25 +205,20 @@ async function handleCardClick(index, symbol) {
 }
 
 function oyunBitisiniGoster(sonuc) {
-    // Eğer zaten ekran varsa tekrar oluşturma
     if (document.querySelector('.bitis-mesaji')) return;
-
     const bitisDiv = document.createElement('div');
-    bitisDiv.className = 'bitis-mesaji';
+    bitisDiv.className = 'bitis-mesaji'; // CSS'teki o tam orta ekran
     
     let emoji = (sonuc === "yendin") ? "🏆" : (sonuc === "yenildin" ? "😢" : "😊");
     let mesaj = (sonuc === "yendin") ? "TEBRİKLER!" : (sonuc === "yenildin" ? "YENİLDİNİZ" : "BERABERE");
     
-    if (sonuc === "yendin") {
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    }
+    if (sonuc === "yendin") confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
 
     bitisDiv.innerHTML = `
         <div style="font-size: 5rem; margin-bottom: 10px;">${emoji}</div>
         <h2 style="color: white; margin-bottom: 20px;">${mesaj}</h2>
         <button onclick="location.reload()" class="btn btn-primary" style="width: 100%;">Lobiye Dön</button>
     `;
-    
     document.body.appendChild(bitisDiv);
 }
 
