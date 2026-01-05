@@ -18,7 +18,7 @@ let secilenTema = "Meyveler";
 const temalar = {
     'Meyveler': ['🍎', '🍌', '🍓', '🍇', '🍉', '🍍', '🍒', '🍑', '🥝', '🥥'],
     'Araçlar': ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐'],
-    'Minecraft': ['💎', '🗡️', '⛏️', '🧱', '🍖', '🏹', '🛡️', '🧟', '🧨', '📦'],
+    'Minecraft': ['💎', '🛡️', '🍖', '🌿', '🛡️', '🧟', '⛏️', '🏹', '📦', '⚔️'],
     'Pokémon': [
         'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png',
         'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png',
@@ -70,7 +70,7 @@ function lobiDinle() {
                 const div = document.createElement('div');
                 div.className = "kullanici-item";
                 div.innerHTML = `<span>${doc.data().displayName} (${doc.data().selectedTheme})</span>
-                                 <button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-davet">Oyna</button>`;
+                                 <button onclick="davetEt('${doc.id}', '${doc.data().displayName}')" class="btn-primary" style="padding:5px 10px;">Oyna</button>`;
                 liste.appendChild(div);
             }
         });
@@ -80,9 +80,10 @@ function lobiDinle() {
 async function davetEt(rakipId, rakipAd) {
     const matchId = `match_${Date.now()}`;
     const semboller = temalar[secilenTema];
+    const karisik = [...semboller, ...semboller].sort(() => Math.random() - 0.5);
     await db.collection("matches").doc(matchId).set({
         gameId: matchId,
-        symbols: [...semboller, ...semboller].sort(() => Math.random() - 0.5),
+        symbols: karisik,
         player1: { uid: currentUser.uid, displayName: currentUser.displayName },
         player2: { uid: rakipId, displayName: rakipAd },
         scores: { player1: 0, player2: 0 },
@@ -114,6 +115,7 @@ function maçaKatil(matchId) {
     matchUnsubscribe = db.collection("matches").doc(matchId).onSnapshot(doc => {
         const data = doc.data();
         if (!data) return;
+        
         if (document.getElementById('oyun-alani').children.length === 0) createBoard(data.symbols);
         
         const kartlar = document.getElementsByClassName('kart');
@@ -124,7 +126,9 @@ function maçaKatil(matchId) {
             if (openedIndices.includes(i) || matchedIndices.includes(i)) {
                 kartlar[i].classList.add('acik');
                 if (matchedIndices.includes(i)) kartlar[i].classList.add('eslesen');
-            } else { kartlar[i].classList.remove('acik'); }
+            } else {
+                kartlar[i].classList.remove('acik');
+            }
         }
 
         const isP1 = data.player1.uid === currentUser.uid;
@@ -148,7 +152,7 @@ function createBoard(symbols) {
         if (s.startsWith('http')) {
             card.innerHTML = `<img src="${s}">`;
         } else {
-            card.innerHTML = s;
+            card.innerHTML = `<span>${s}</span>`;
         }
         card.onclick = () => handleCardClick(i, s);
         oyunAlani.appendChild(card);
@@ -175,30 +179,24 @@ async function handleCardClick(index, symbol) {
                 openedCards: []
             });
         } else {
-            setTimeout(() => docRef.update({ currentPlayer: data.currentPlayer === 1 ? 2 : 1, openedCards: [] }), 1000);
+            setTimeout(() => {
+                docRef.update({ currentPlayer: data.currentPlayer === 1 ? 2 : 1, openedCards: [] });
+            }, 1000);
         }
     }
 }
 
 function oyunBitisiniGoster(isP1, scores) {
-    if (document.querySelector('.bitis-mesaji')) return;
-    const skorun = isP1 ? scores.player1 : scores.player2;
-    const rakipSkor = isP1 ? scores.player2 : scores.player1;
-    
-    const bitisDiv = document.createElement('div');
-    bitisDiv.className = 'bitis-mesaji'; 
-    
-    let durum = (skorun > rakipSkor) ? "YENDİN! 🏆" : (skorun < rakipSkor ? "YENİLDİN 😢" : "BERABERE 😊");
-    if (skorun > rakipSkor) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-
-    bitisDiv.innerHTML = `
-        <h2 style="color: white; font-size: 2rem;">${durum}</h2>
-        <p style="color: #eee; margin: 10px 0;">Sen: ${skorun} - Rakip: ${rakipSkor}</p>
-        <button onclick="location.reload()" class="btn btn-primary" style="width: 100%;">Lobiye Dön</button>
-    `;
-    document.body.appendChild(bitisDiv);
+    const s1 = isP1 ? scores.player1 : scores.player2;
+    const s2 = isP1 ? scores.player2 : scores.player1;
+    const mesaj = s1 > s2 ? "Tebrikler, Kazandın! 🏆" : (s1 < s2 ? "Maalesef, Yenildin. 😢" : "Berabere! 🤝");
+    if (s1 > s2) confetti({ particleCount: 150, spread: 70 });
+    alert(mesaj);
+    location.reload();
 }
 
+// YENİ BUTON FONKSİYONLARI (image_d1cd88, image_d1d0b1)
 document.getElementById('google-login-btn').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-document.getElementById('oyundan-cik-btn').onclick = () => auth.signOut();
-document.getElementById('ana-ekran-btn').onclick = () => location.reload();
+document.getElementById('auth-cikis-btn').onclick = () => auth.signOut();
+document.getElementById('ana-ekran-git-btn').onclick = () => ekranDegistir('tema-ekrani');
+document.getElementById('lobiye-don-btn').onclick = () => location.reload();
